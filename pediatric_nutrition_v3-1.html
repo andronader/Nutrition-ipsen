@@ -1615,13 +1615,20 @@ async function loadFollowups(childId) {
     state.followups = [];
     snap.forEach(d => state.followups.push({ followupId: d.id, ...d.data() }));
 
-    // Set prev weight from last followup
+    // Set prev weight from last followup + load lab results
     if (state.followups.length) {
       const last = state.followups[state.followups.length-1];
       document.getElementById('p-prev-weight').value = last.weight || '';
       document.getElementById('p-prev-date').value   = last.date   || '';
       state.prevWeight = last.weight || 0;
+      // تحميل التحاليل من آخر زيارة
+      if (last.labResults && typeof last.labResults === 'object') {
+        state.labResults = { ...last.labResults };
+        renderLabTable();
+      }
     }
+    renderFollowupTable();
+    renderWeightChart();
   } catch(e) {
     console.warn('loadFollowups:', e.message);
   }
@@ -2011,7 +2018,7 @@ function renderFollowupTable() {
     return;
   }
   tbody.innerHTML = state.followups.map((r, i) => `
-    <tr>
+    <tr onclick="openFollowupDetail(${i})" style="cursor:pointer;" onmouseover="this.style.background='var(--blue-glow)'" onmouseout="this.style.background=''">
       <td style="font-family:var(--mono);color:var(--txt-2);">${i+1}</td>
       <td style="font-family:var(--mono);">${r.date || '—'}</td>
       <td>${r.age || '—'}</td>
@@ -2073,6 +2080,50 @@ function drawLineChart(canvasId, datasets, xLabels) {
       ctx.beginPath();ctx.arc(xScale(i),yScale(v),4,0,Math.PI*2);
       ctx.fillStyle=ds.color;ctx.fill();});
   });
+}
+
+function openFollowupDetail(index) {
+  const r = state.followups[index];
+  if (!r) return;
+  document.getElementById('fd-title').textContent = `زيارة ${index+1} — ${r.date || ''}`;
+  const fields = [
+    ['📅 التاريخ',        r.date       || '—'],
+    ['🕐 العمر',          r.age        || '—'],
+    ['⚖️ الوزن (كجم)',    fmt(r.weight)],
+    ['📏 الطول (سم)',     fmt(r.height)],
+    ['📊 BMI',            fmt(r.bmi)],
+    ['📉 W/H%',           r.wh ? fmt(r.wh)+'%' : '—'],
+    ['📈 H/A%',           r.ha ? fmt(r.ha)+'%' : '—'],
+    ['🔥 السعرات',        r.calories   || '—'],
+    ['🥩 البروتين (جم)',  r.protein    || '—'],
+    ['🍞 الكربوهيدرات',  r.carbs      || '—'],
+    ['🧈 الدهون (جم)',    r.fat        || '—'],
+    ['💧 السوائل (مل)',   r.fluids     || '—'],
+    ['📐 محيط الرأس',    fmt(r.head)],
+    ['📐 محيط الخصر',    fmt(r.waist)],
+    ['⚖️ الوزن السابق',  fmt(r.prevWeight)],
+  ];
+  document.getElementById('fd-body').innerHTML = fields.map(([label, val]) => `
+    <div style="background:var(--card);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;color:var(--txt-3);margin-bottom:3px;">${label}</div>
+      <div style="font-weight:600;color:var(--txt);font-size:14px;">${val}</div>
+    </div>`).join('') +
+    (r.notes ? `<div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;color:var(--txt-3);margin-bottom:3px;">📝 الملاحظات</div>
+      <div style="font-size:13px;color:var(--txt);">${r.notes}</div>
+    </div>` : '') +
+    (r.labResults && Object.keys(r.labResults).length ? `
+    <div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;color:var(--txt-3);margin-bottom:8px;">🧪 التحاليل المخبرية</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        ${Object.entries(r.labResults).map(([k,v]) => `
+          <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:12px;">
+            <span style="color:var(--txt-2);">${k}</span>
+            <strong>${v}</strong>
+          </div>`).join('')}
+      </div>
+    </div>` : '');
+  openModal('followupDetailModal');
 }
 
 function renderWeightChart() {
@@ -2229,5 +2280,21 @@ function doLogout() {
 document.getElementById('p-visit').value = today();
 renderLabTable();
 </script>
+
+<!-- ══ Followup Detail Modal ══ -->
+<div class="modal-bg" id="followupDetailModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <span style="font-size:20px;">📋</span>
+      <span class="modal-title" id="fd-title">تفاصيل الزيارة</span>
+      <button class="modal-close" onclick="closeModal('followupDetailModal')">✕</button>
+    </div>
+    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="fd-body">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('followupDetailModal')">إغلاق</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
