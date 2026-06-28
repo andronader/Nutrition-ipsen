@@ -371,45 +371,6 @@ textarea { resize:vertical; min-height:80px; }
 </head>
 <body>
 
-<!-- ════════ LOGIN SCREEN ════════ -->
-<div id="loginScreen" style="
-  position:fixed;inset:0;background:#F0F4F9;z-index:9999;
-  display:flex;align-items:center;justify-content:center;
-">
-  <div style="
-    background:#fff;border-radius:16px;padding:36px 32px;
-    width:340px;max-width:95vw;
-    box-shadow:0 8px 40px rgba(27,58,107,0.15);
-    border:1px solid #C2D4E8;
-  ">
-    <div style="text-align:center;margin-bottom:24px;">
-      <img src="Ipsen__2_.png" style="width:120px;filter:none;margin-bottom:12px;" onerror="this.style.display='none'">
-      <div style="font-size:18px;font-weight:700;color:#1B3A6B;">NutriPed Admin</div>
-      <div style="font-size:12px;color:#8AAAC8;margin-top:3px;">لوحة الإدارة</div>
-    </div>
-    <div id="login-error" style="display:none;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;padding:10px 14px;font-size:13px;color:#C62828;margin-bottom:14px;"></div>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">اسم المستخدم</label>
-      <input type="text" id="login-user" placeholder="username" autocomplete="username"
-        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-    </div>
-    <div style="margin-bottom:20px;">
-      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">كلمة المرور</label>
-      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
-        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
-        onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button onclick="doLogin()" id="login-btn" style="
-      width:100%;padding:12px;background:#1B3A6B;color:#fff;border:none;
-      border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
-    ">🔐 دخول</button>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:#8AAAC8;">
-      NutriPed · Pediatric Nutrition System
-    </div>
-  </div>
-</div>
-
 <div id="toast"></div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
@@ -1367,14 +1328,8 @@ async function doLogin() {
 
 function doLogout() {
   if (!confirm('هل تريد تسجيل الخروج؟')) return;
-  sessionStorage.removeItem('nutriped_admin');
-  currentAdmin = null;
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('login-user').value = '';
-  document.getElementById('login-pass').value = '';
-  document.getElementById('login-error').style.display = 'none';
-  document.getElementById('login-btn').textContent = '🔐 دخول';
-  document.getElementById('login-btn').disabled = false;
+  sessionStorage.removeItem('nutriped_session');
+  window.location.href = 'index.html';
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1468,24 +1423,21 @@ async function deleteAdmin(id, name) {
 
 // ── Init ──────────────────────────────────────────────────────
 window.addEventListener('fb-ready', () => {
-  // Check if already logged in this session
-  const saved = sessionStorage.getItem('nutriped_admin');
-  if (saved) {
-    try {
-      currentAdmin = JSON.parse(saved);
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('sb-admin-name').textContent = `${currentAdmin.name} · ${currentAdmin.role}`;
-      if (currentAdmin.role !== 'superadmin') {
-        document.querySelectorAll('.nb[onclick*="admins"]').forEach(b => b.style.display='none');
-      }
-      loadAll();
-      loadSettings();
-      showToast(`✅ مرحباً ${currentAdmin.name}`);
-    } catch(e) {
-      sessionStorage.removeItem('nutriped_admin');
+  const saved = sessionStorage.getItem('nutriped_session');
+  if (!saved) { window.location.href = 'index.html'; return; }
+  try {
+    currentAdmin = JSON.parse(saved);
+    if (currentAdmin.role !== 'superadmin') {
+      window.location.href = 'index.html'; return;
     }
+    document.getElementById('sb-admin-name').textContent = `${currentAdmin.name} · ${currentAdmin.role}`;
+    loadAll();
+    loadSettings();
+    showToast(`✅ مرحباً ${currentAdmin.name}`);
+  } catch(e) {
+    sessionStorage.removeItem('nutriped_session');
+    window.location.href = 'index.html';
   }
-  // else: login screen remains visible
 });
 </script>
 </body>

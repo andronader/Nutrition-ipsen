@@ -572,45 +572,6 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
 </head>
 <body>
 
-<!-- ════════ LOGIN SCREEN ════════ -->
-<div id="loginScreen" style="
-  position:fixed;inset:0;background:#F0F4F9;z-index:9999;
-  display:flex;align-items:center;justify-content:center;
-">
-  <div style="
-    background:#fff;border-radius:16px;padding:36px 32px;
-    width:340px;max-width:95vw;
-    box-shadow:0 8px 40px rgba(27,58,107,0.15);
-    border:1px solid #C2D4E8;
-  ">
-    <div style="text-align:center;margin-bottom:24px;">
-      <img src="Ipsen__2_.png" style="width:130px;margin-bottom:12px;" onerror="this.style.display='none'">
-      <div style="font-size:18px;font-weight:700;color:#1B3A6B;">NutriPed</div>
-      <div style="font-size:12px;color:#8AAAC8;margin-top:3px;">نظام تغذية الأطفال</div>
-    </div>
-    <div id="login-error" style="display:none;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;padding:10px 14px;font-size:13px;color:#C62828;margin-bottom:14px;"></div>
-    <div style="margin-bottom:12px;">
-      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">اسم المستخدم</label>
-      <input type="text" id="login-user" placeholder="username" autocomplete="username"
-        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-    </div>
-    <div style="margin-bottom:20px;">
-      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">كلمة المرور</label>
-      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
-        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
-        onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button onclick="doLogin()" id="login-btn" style="
-      width:100%;padding:12px;background:#1B3A6B;color:#fff;border:none;
-      border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
-    ">🔐 دخول</button>
-    <div style="text-align:center;margin-top:16px;font-size:11px;color:#8AAAC8;">
-      NutriPed · Pediatric Nutrition System · Ipsen
-    </div>
-  </div>
-</div>
-
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -2163,112 +2124,34 @@ window.searchChildren = async function() {
 };
 
 // ══════════════════════════════════════════════════════════════
-// LOGIN / LOGOUT
+// INIT — Session from index.html
 // ══════════════════════════════════════════════════════════════
-let currentUser = null;
-
-async function doLogin() {
-  const username = document.getElementById('login-user').value.trim();
-  const password = document.getElementById('login-pass').value;
-  const errEl    = document.getElementById('login-error');
-  const btn      = document.getElementById('login-btn');
-
-  if (!username || !password) {
-    errEl.textContent = '⚠️ أدخل اسم المستخدم وكلمة المرور';
-    errEl.style.display = 'block'; return;
-  }
-
-  btn.textContent = '...جارٍ التحقق';
-  btn.disabled = true;
-  errEl.style.display = 'none';
-
-  if (!window._db) {
-    await new Promise(r => setTimeout(r, 1500));
-  }
-
+window.addEventListener('fb-ready', () => {
+  state.fbReady = true;
+  const saved = sessionStorage.getItem('nutriped_session');
+  if (!saved) { window.location.href = 'index.html'; return; }
   try {
-    const {getDocs, collection, query, where} = window._fb;
-    const q = query(
-      collection(window._db, 'admins'),
-      where('username', '==', username),
-      where('active', '==', true)
-    );
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      errEl.textContent = '❌ اسم المستخدم غير موجود أو الحساب غير نشط';
-      errEl.style.display = 'block';
-      btn.textContent = '🔐 دخول'; btn.disabled = false; return;
-    }
-
-    const adminDoc = snap.docs[0].data();
-    if (adminDoc.password !== password) {
-      errEl.textContent = '❌ كلمة المرور غير صحيحة';
-      errEl.style.display = 'block';
-      btn.textContent = '🔐 دخول'; btn.disabled = false; return;
-    }
-
-    // ✅ Login success
-    currentUser = { username: adminDoc.username, name: adminDoc.name, role: adminDoc.role };
-    sessionStorage.setItem('nutriped_user', JSON.stringify(currentUser));
-    document.getElementById('loginScreen').style.display = 'none';
-
-    // Show user name in sidebar footer
+    const user = JSON.parse(saved);
     const footer = document.querySelector('.sidebar-footer');
     if (footer) {
       footer.innerHTML = `
         <div class="vtag">v3.0</div>
-        <div style="margin-bottom:6px;">${adminDoc.name}<br><span style="font-size:10px;opacity:0.6;">${adminDoc.role}</span></div>
-        <button onclick="doLogout()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;">🚪 خروج</button>
+        <div style="margin-bottom:6px;">${user.name}<br><span style="font-size:10px;opacity:0.6;">${user.role}</span></div>
+        <button onclick="doLogout()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:6px;padding:5px 10px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;margin-top:4px;">🚪 تسجيل خروج</button>
       `;
     }
-
-    showToast(`✅ مرحباً ${adminDoc.name}`);
-
+    showToast(`✅ مرحباً ${user.name}`);
   } catch(e) {
-    errEl.textContent = '❌ خطأ في الاتصال: ' + e.message;
-    errEl.style.display = 'block';
-    btn.textContent = '🔐 دخول'; btn.disabled = false;
+    sessionStorage.removeItem('nutriped_session');
+    window.location.href = 'index.html';
   }
-}
+});
 
 function doLogout() {
   if (!confirm('هل تريد تسجيل الخروج؟')) return;
-  sessionStorage.removeItem('nutriped_user');
-  currentUser = null;
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('login-user').value = '';
-  document.getElementById('login-pass').value = '';
-  document.getElementById('login-error').style.display = 'none';
-  document.getElementById('login-btn').textContent = '🔐 دخول';
-  document.getElementById('login-btn').disabled = false;
+  sessionStorage.removeItem('nutriped_session');
+  window.location.href = 'index.html';
 }
-
-// ══════════════════════════════════════════════════════════════
-// INIT
-// ══════════════════════════════════════════════════════════════
-window.addEventListener('fb-ready', () => {
-  state.fbReady = true;
-  // Check existing session
-  const saved = sessionStorage.getItem('nutriped_user');
-  if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
-      document.getElementById('loginScreen').style.display = 'none';
-      const footer = document.querySelector('.sidebar-footer');
-      if (footer) {
-        footer.innerHTML = `
-          <div class="vtag">v3.0</div>
-          <div style="margin-bottom:6px;">${currentUser.name}<br><span style="font-size:10px;opacity:0.6;">${currentUser.role}</span></div>
-          <button onclick="doLogout()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;">🚪 خروج</button>
-        `;
-      }
-      showToast(`✅ مرحباً ${currentUser.name}`);
-    } catch(e) {
-      sessionStorage.removeItem('nutriped_user');
-    }
-  }
-});
 
 // Init date
 document.getElementById('p-visit').value = today();
