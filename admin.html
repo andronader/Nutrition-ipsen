@@ -1285,13 +1285,15 @@ async function doLogin() {
     const {getDocs, collection, query, where} = window._fb;
     const q = query(
       collection(window._db, 'Admins'),
-      where('username', '==', username)
-      // where('active', '==', true)
+      where('username', '==', username),
+      where('active', '==', true)
     );
     const snap = await getDocs(q);
+    console.log("Query result - empty:", snap.empty, "size:", snap.size);
+    if (!snap.empty) { console.log("Doc data:", JSON.stringify(snap.docs[0].data())); }
 
     if (snap.empty) {
-      errEl.textContent = '❌ اسم المستخدم غير موجود أو الحساب غير نشط';
+      errEl.textContent = "❌ snap.empty=" + snap.empty + " size=" + snap.size;
       errEl.style.display = 'block';
       btn.textContent = '🔐 دخول'; btn.disabled = false; return;
     }
