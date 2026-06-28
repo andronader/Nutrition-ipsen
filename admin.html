@@ -1285,8 +1285,8 @@ async function doLogin() {
     const {getDocs, collection, query, where} = window._fb;
     const q = query(
       collection(window._db, 'Admins'),
-      where('username', '==', username),
-      where('active', '==', true)
+      where('username', '==', username)
+      // where('active', '==', true)
     );
     const snap = await getDocs(q);
 
