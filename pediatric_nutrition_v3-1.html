@@ -634,7 +634,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
       <div class="fr">
         <div class="fg">
           <label>اسم الطفل *</label>
-          <input type="text" id="nc-name" placeholder="الاسم الكامل">
+          <input type="text" id="nc-name" placeholder="الاسم الكامل" oninput="checkExistingChild()">
         </div>
         <div class="fg">
           <label>اسم ولي الأمر *</label>
@@ -644,7 +644,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
       <div class="fr">
         <div class="fg">
           <label>تاريخ الميلاد *</label>
-          <input type="date" id="nc-dob">
+          <input type="date" id="nc-dob" onchange="checkExistingChild()">
         </div>
         <div class="fg">
           <label>النوع *</label>
@@ -669,6 +669,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
         <label>ملاحظات عامة</label>
         <textarea id="nc-notes" rows="2" placeholder="حساسية، أدوية..."></textarea>
       </div>
+      <div id="nc-search-result" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;background:#EBF5FB;border:1px solid #3E8FD4;font-size:13px;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('newChildModal')">رجوع</button>
@@ -1423,6 +1424,54 @@ async function searchChildren() {
 // ══════════════════════════════════════════════════════════════
 // FIREBASE – CREATE CHILD
 // ══════════════════════════════════════════════════════════════
+// ── بحث تلقائي عند كتابة الاسم أو تاريخ الميلاد ──
+async function checkExistingChild() {
+  const name = (document.getElementById('nc-name').value || '').trim();
+  const dob  = (document.getElementById('nc-dob').value  || '').trim();
+  const resultEl = document.getElementById('nc-search-result');
+  if (!resultEl) return;
+
+  if (!name || !dob) { resultEl.style.display = 'none'; return; }
+  if (!window._db) return;
+
+  try {
+    const {getDocs, collection} = window._fb;
+    const snap = await getDocs(collection(window._db, 'children'));
+    let found = null;
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      const sameName = (d.name || '').trim().toLowerCase() === name.toLowerCase();
+      const sameDOB  = (d.dob  || '') === dob;
+      if (sameName && sameDOB) found = { id: docSnap.id, ...d };
+    });
+
+    if (found) {
+      resultEl.style.display = 'block';
+      resultEl.innerHTML = `⚠️ <strong>هذا الطفل موجود مسبقاً</strong> — 
+        ولي الأمر: ${found.guardian || '—'}<br>
+        <button onclick="openExistingChild('${found.id}')" 
+          style="margin-top:8px;padding:5px 14px;background:#1B3A6B;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;">
+          📂 فتح ملفه مباشرة
+        </button>`;
+    } else {
+      resultEl.style.display = 'none';
+    }
+  } catch(e) { resultEl.style.display = 'none'; }
+}
+
+function openExistingChild(childId) {
+  if (!window._db) return;
+  const {getDoc, doc} = window._fb;
+  getDoc(doc(window._db, 'children', childId)).then(snap => {
+    if (snap.exists()) {
+      closeModal('newChildModal');
+      closeModal('searchModal');
+      loadChild(snap.id, snap.data());
+      showToast('📂 تم فتح الملف الموجود');
+    }
+  });
+}
+
 async function createNewChild() {
   if (!state.fbReady) { showToast('⚠️ Firebase لم يتصل بعد'); return; }
   const name     = document.getElementById('nc-name').value.trim();
