@@ -1284,7 +1284,7 @@ async function doLogin() {
   try {
     const {getDocs, collection, query, where} = window._fb;
     const q = query(
-      collection(window._db, 'admins'),
+      collection(window._db, 'Admins'),
       where('username', '==', username),
       where('active', '==', true)
     );
@@ -1339,7 +1339,7 @@ async function loadAdmins() {
   if (!window._db) return;
   const {getDocs, collection} = window._fb;
   try {
-    const snap = await getDocs(collection(window._db, 'admins'));
+    const snap = await getDocs(collection(window._db, 'Admins'));
     const admins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     const tbody = document.getElementById('admins-tbody');
     if (!admins.length) {
@@ -1381,7 +1381,7 @@ async function addAdmin() {
 
   try {
     const {addDoc, collection, serverTimestamp} = window._fb;
-    await addDoc(collection(window._db, 'admins'), {
+    await addDoc(collection(window._db, 'Admins'), {
       name, username, password, role,
       active: true,
       createdAt: serverTimestamp(),
@@ -1401,7 +1401,7 @@ async function addAdmin() {
 async function toggleAdmin(id, newActive) {
   try {
     const {doc, setDoc, getDoc} = window._fb;
-    const ref = doc(window._db, 'admins', id);
+    const ref = doc(window._db, 'Admins', id);
     const snap = await getDoc(ref);
     if (snap.exists()) {
       await setDoc(ref, { ...snap.data(), active: newActive });
@@ -1415,7 +1415,7 @@ async function deleteAdmin(id, name) {
   if (!confirm(`هل تريد حذف حساب: ${name}؟`)) return;
   try {
     const {doc, deleteDoc} = window._fb;
-    await deleteDoc(doc(window._db, 'admins', id));
+    await deleteDoc(doc(window._db, 'Admins', id));
     await loadAdmins();
     showToast('✅ تم حذف الحساب');
   } catch(e) { showToast('❌ خطأ: ' + e.message); }
