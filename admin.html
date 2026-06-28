@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NutriPed Admin — لوحة الإدارة</title>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc,
+           addDoc, query, where, orderBy, serverTimestamp, getCountFromServer }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ─── REPLACE WITH YOUR CONFIG ───────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA2Hmm9PWCR2EBpWwopCwACS9iRd7kuCMM",
+    authDomain:        "nutrition--pediatric.firebaseapp.com",
+    projectId:         "nutrition--pediatric",
+    storageBucket:     "nutrition--pediatric.firebasestorage.app",
+    messagingSenderId: "230203820487",
+    appId:             "1:230203820487:web:8d8c3383de4bd009e3b1e2"
+  };
+  // ────────────────────────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  window._db = db;
+  window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc,
+                 addDoc, query, where, orderBy, serverTimestamp, getCountFromServer };
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+:root {
+  --navy:      #1B3A6B;
+  --navy-dark: #142E58;
+  --blue:      #3E8FD4;
+  --blue-glow: rgba(62,143,212,0.15);
+  --bg:        #F0F4F9;
+  --surface:   #FFFFFF;
+  --card:      #EBF1F8;
+  --border:    #C2D4E8;
+  --txt:       #0F2A52;
+  --txt-2:     #3A5A8A;
+  --txt-3:     #8AAAC8;
+  --green:     #2E7D32;
+  --green-dim: rgba(46,125,50,0.12);
+  --amber:     #E65100;
+  --amber-dim: rgba(230,81,0,0.12);
+  --red:       #C62828;
+  --red-dim:   rgba(198,40,40,0.12);
+  --sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+  --r: 8px; --r-lg: 14px;
+  --tr: 0.18s cubic-bezier(0.4,0,0.2,1);
+  --sidebar-w: 230px;
+  --topbar-h:  56px;
+  --bnav-h:    60px;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100%; overflow:hidden; }
+body { font-family:var(--sans); background:var(--bg); color:var(--txt); font-size:14px; }
+
+/* ── Shell ── */
+.shell { display:flex; height:100vh; overflow:hidden; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width:var(--sidebar-w); min-width:var(--sidebar-w);
+  background:var(--navy); border-left:1px solid var(--navy-dark);
+  display:flex; flex-direction:column; overflow-y:auto; z-index:20;
+}
+.sb-brand {
+  padding:14px; background:var(--navy-dark);
+  border-bottom:1px solid rgba(255,255,255,0.12);
+}
+.sb-logo { width:130px; height:auto; filter:brightness(0) invert(1); display:block; margin-bottom:6px; }
+.sb-sub  { font-size:10px; color:rgba(255,255,255,0.5); font-weight:600; letter-spacing:.04em; }
+.sb-admin-badge {
+  display:inline-block; margin-top:5px;
+  background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.2);
+  border-radius:4px; padding:2px 8px; font-size:10px; font-family:var(--mono);
+  color:rgba(255,255,255,0.7);
+}
+
+.sb-section { padding:6px 8px 0; }
+.sb-lbl {
+  font-size:10px; font-weight:600; color:rgba(255,255,255,0.35);
+  text-transform:uppercase; letter-spacing:.08em; padding:10px 8px 4px;
+}
+.nb {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 10px; border-radius:6px;
+  cursor:pointer; color:rgba(255,255,255,0.65); font-size:13px; font-weight:500;
+  border:none; background:none; width:100%; text-align:right;
+  font-family:var(--sans); margin-bottom:2px;
+  transition:all var(--tr);
+}
+.nb:hover { background:rgba(255,255,255,0.09); color:#fff; }
+.nb.active { background:rgba(255,255,255,0.16); color:#fff; border:1px solid rgba(255,255,255,0.25); }
+.nb .ni { font-size:15px; flex-shrink:0; }
+.nb .badge {
+  margin-right:auto; background:rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.8); font-size:10px; font-weight:700;
+  padding:1px 7px; border-radius:10px; font-family:var(--mono);
+}
+
+.sb-footer {
+  margin-top:auto; padding:12px;
+  border-top:1px solid rgba(255,255,255,0.1);
+  font-size:11px; color:rgba(255,255,255,0.35);
+}
+.sb-footer strong { color:rgba(255,255,255,0.6); display:block; margin-bottom:2px; }
+.open-app-btn {
+  display:flex; align-items:center; gap:6px;
+  margin-top:8px; padding:7px 10px; border-radius:6px;
+  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.8); font-size:12px; cursor:pointer;
+  text-decoration:none; font-family:var(--sans); font-weight:500;
+  transition:all var(--tr);
+}
+.open-app-btn:hover { background:rgba(255,255,255,0.18); color:#fff; }
+
+/* ── Main ── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+/* ── Topbar ── */
+.topbar {
+  height:var(--topbar-h); min-height:var(--topbar-h);
+  background:var(--navy); border-bottom:1px solid var(--navy-dark);
+  display:flex; align-items:center; gap:10px; padding:0 18px; z-index:10;
+}
+.menu-toggle {
+  display:none; width:34px; height:34px; border-radius:6px;
+  border:1px solid rgba(255,255,255,0.2); background:transparent;
+  color:rgba(255,255,255,0.85); font-size:18px; cursor:pointer;
+  align-items:center; justify-content:center;
+}
+.topbar-title { font-size:15px; font-weight:600; color:#fff; flex:1; }
+.topbar-title span { color:rgba(255,255,255,0.5); font-weight:400; font-size:13px; margin-right:6px; }
+.topbar-right { display:flex; align-items:center; gap:8px; }
+.admin-chip {
+  display:flex; align-items:center; gap:6px; padding:5px 12px;
+  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2);
+  border-radius:20px; font-size:12px; color:rgba(255,255,255,0.85);
+}
+
+/* ── Content ── */
+.content { flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:14px; padding-bottom:24px; }
+
+/* ── Page ── */
+.page { display:none; flex-direction:column; gap:14px; }
+.page.active { display:flex; }
+
+/* ── Section header ── */
+.page-header {
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+}
+.page-title { font-size:18px; font-weight:700; color:var(--navy); }
+.page-sub   { font-size:13px; color:var(--txt-2); margin-top:2px; }
+
+/* ── Cards / Grid ── */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+
+.card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
+.ch   { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.ct   { font-size:13px; font-weight:600; color:var(--navy); flex:1; }
+.cb   { padding:16px; }
+
+/* Stat card */
+.stat {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:16px 18px;
+  display:flex; align-items:center; gap:14px;
+  transition:all var(--tr);
+}
+.stat:hover { border-color:var(--blue); box-shadow:0 2px 12px rgba(62,143,212,0.12); }
+.stat-icon {
+  width:48px; height:48px; border-radius:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:22px;
+}
+.si-blue   { background:var(--blue-glow); }
+.si-green  { background:var(--green-dim); }
+.si-amber  { background:var(--amber-dim); }
+.si-red    { background:var(--red-dim); }
+.stat-body { flex:1; }
+.stat-val  { font-size:28px; font-weight:700; font-family:var(--mono); color:var(--navy); line-height:1; }
+.stat-lbl  { font-size:12px; color:var(--txt-2); margin-top:3px; }
+.stat-delta { font-size:11px; font-weight:600; padding:2px 7px; border-radius:10px; display:inline-block; margin-top:4px; }
+.d-green { background:var(--green-dim); color:var(--green); }
+.d-red   { background:var(--red-dim);   color:var(--red);   }
+.d-blue  { background:var(--blue-glow); color:var(--blue);  }
+
+/* ── Table ── */
+.tbl { width:100%; border-collapse:collapse; }
+.tbl th {
+  font-size:11px; font-weight:600; color:var(--txt-3);
+  text-transform:uppercase; letter-spacing:.06em;
+  padding:9px 14px; text-align:right;
+  border-bottom:1px solid var(--border); background:var(--card);
+  white-space:nowrap;
+}
+.tbl td { padding:10px 14px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl tbody tr:hover td { background:var(--card); }
+
+/* ── Pill ── */
+.pill { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+.p-green { background:var(--green-dim); color:var(--green); }
+.p-amber { background:var(--amber-dim); color:var(--amber); }
+.p-red   { background:var(--red-dim);   color:var(--red);   }
+.p-blue  { background:var(--blue-glow); color:var(--blue);  }
+.p-gray  { background:var(--card); color:var(--txt-3); }
+
+/* ── Buttons ── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:6px;
+  font-family:var(--sans); font-size:13px; font-weight:500;
+  cursor:pointer; border:none; transition:all var(--tr); white-space:nowrap;
+}
+.btn-primary { background:var(--navy); color:#fff; }
+.btn-primary:hover { background:var(--navy-dark); }
+.btn-blue    { background:var(--blue); color:#fff; }
+.btn-blue:hover { background:#2778BB; }
+.btn-ghost   { background:transparent; color:var(--txt-2); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--card); color:var(--txt); }
+.btn-danger  { background:var(--red); color:#fff; }
+.btn-danger:hover { background:#991B1B; }
+.btn-sm { padding:5px 11px; font-size:12px; }
+.btn-icon {
+  width:32px; height:32px; border-radius:6px; padding:0;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-size:15px;
+}
+
+/* ── Form ── */
+.fg { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.fg:last-child { margin-bottom:0; }
+label { font-size:12px; font-weight:500; color:var(--txt-2); }
+input[type="text"], input[type="number"], input[type="date"],
+input[type="email"], input[type="tel"], select, textarea {
+  width:100%; background:var(--bg); border:1px solid var(--border);
+  border-radius:6px; color:var(--txt); font-family:var(--sans);
+  font-size:13px; padding:8px 12px; outline:none;
+  transition:border-color var(--tr), box-shadow var(--tr); direction:rtl;
+}
+input:focus, select:focus, textarea:focus {
+  border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow);
+}
+textarea { resize:vertical; min-height:80px; }
+.fr { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.divider { height:1px; background:var(--border); margin:10px 0; }
+
+/* ── Modal ── */
+.modal-bg {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.5); z-index:200;
+  align-items:center; justify-content:center; padding:16px;
+}
+.modal-bg.open { display:flex; }
+.modal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); width:100%; max-width:520px;
+  max-height:90vh; overflow-y:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,0.2);
+}
+.mh { padding:16px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+.mt { font-size:15px; font-weight:700; color:var(--navy); flex:1; }
+.mc { width:28px; height:28px; border-radius:6px; display:flex; align-items:center; justify-content:center; background:transparent; border:1px solid var(--border); color:var(--txt-2); cursor:pointer; font-size:16px; }
+.mc:hover { background:var(--red-dim); color:var(--red); }
+.mb { padding:18px; }
+.mf { padding:14px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+
+/* ── Toast ── */
+#toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--navy); color:#fff; border-radius:8px;
+  padding:10px 18px; font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.2); z-index:300;
+  opacity:0; transition:all .3s; pointer-events:none; white-space:nowrap;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ── Spinner ── */
+.spinner { width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; animation:spin .7s linear infinite; display:inline-block; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Search bar ── */
+.search-bar {
+  display:flex; gap:8px; align-items:center;
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:6px; padding:6px 12px;
+}
+.search-bar input {
+  border:none; background:transparent; outline:none;
+  font-family:var(--sans); font-size:13px; color:var(--txt); flex:1; direction:rtl;
+}
+
+/* ── Bottom nav mobile ── */
+.bnav {
+  display:none; position:fixed; bottom:0; left:0; right:0;
+  height:var(--bnav-h); background:var(--navy);
+  border-top:1px solid var(--navy-dark); z-index:100;
+  padding:0 4px; justify-content:space-around; align-items:center;
+}
+.bn {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  font-family:var(--sans); font-size:9px; font-weight:500;
+  color:rgba(255,255,255,0.5); background:none; border:none;
+  cursor:pointer; padding:6px 10px; border-radius:6px; flex:1;
+  transition:all var(--tr);
+}
+.bn .bni { font-size:18px; line-height:1; }
+.bn.active { color:#fff; }
+
+/* ── Drawer overlay ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; }
+.overlay.open { display:block; }
+.sidebar.open {
+  position:fixed; top:0; right:0; bottom:0;
+  z-index:60; box-shadow:-8px 0 24px rgba(0,0,0,0.3);
+}
+
+/* ── Confirm danger box ── */
+.danger-box {
+  background:var(--red-dim); border:1px solid rgba(198,40,40,0.3);
+  border-radius:8px; padding:12px 14px; font-size:13px; color:var(--red);
+  margin-bottom:12px;
+}
+
+/* ── Empty state ── */
+.empty { text-align:center; padding:40px 20px; color:var(--txt-2); }
+.empty .ei { font-size:48px; opacity:.4; margin-bottom:10px; }
+.empty h3  { font-size:15px; font-weight:600; color:var(--txt); margin-bottom:5px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+/* ── Responsive ── */
+@media (max-width:768px) {
+  .menu-toggle { display:flex; }
+  .bnav { display:flex; }
+  .sidebar {
+    position:fixed; top:0; right:-100%; bottom:0; width:260px; min-width:0;
+    transition:right var(--tr); z-index:60; background:var(--navy);
+  }
+  .sidebar.open { right:0; }
+  .content { padding-bottom:calc(var(--bnav-h) + 12px); }
+  .g2,.g3,.g4 { grid-template-columns:1fr; }
+  .fr { grid-template-columns:1fr 1fr; }
+  .stat { padding:12px 14px; }
+  .stat-val { font-size:22px; }
+  #toast { bottom:calc(var(--bnav-h) + 10px); }
+  .modal-bg { align-items:flex-end; padding:0; }
+  .modal { border-radius:var(--r-lg) var(--r-lg) 0 0; max-width:100%; }
+}
+@media (max-width:480px) {
+  .fr { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ LOGIN SCREEN ════════ -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;background:#F0F4F9;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+">
+  <div style="
+    background:#fff;border-radius:16px;padding:36px 32px;
+    width:340px;max-width:95vw;
+    box-shadow:0 8px 40px rgba(27,58,107,0.15);
+    border:1px solid #C2D4E8;
+  ">
+    <div style="text-align:center;margin-bottom:24px;">
+      <img src="Ipsen__2_.png" style="width:120px;filter:none;margin-bottom:12px;" onerror="this.style.display='none'">
+      <div style="font-size:18px;font-weight:700;color:#1B3A6B;">NutriPed Admin</div>
+      <div style="font-size:12px;color:#8AAAC8;margin-top:3px;">لوحة الإدارة</div>
+    </div>
+    <div id="login-error" style="display:none;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;padding:10px 14px;font-size:13px;color:#C62828;margin-bottom:14px;"></div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">اسم المستخدم</label>
+      <input type="text" id="login-user" placeholder="username" autocomplete="username"
+        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">كلمة المرور</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" id="login-btn" style="
+      width:100%;padding:12px;background:#1B3A6B;color:#fff;border:none;
+      border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    ">🔐 دخول</button>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:#8AAAC8;">
+      NutriPed · Pediatric Nutrition System
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<!-- Delete confirm modal -->
+<div class="modal-bg" id="deleteModal">
+  <div class="modal">
+    <div class="mh"><span style="font-size:20px;">🗑️</span><span class="mt">تأكيد الحذف</span><button class="mc" onclick="closeModal('deleteModal')">✕</button></div>
+    <div class="mb">
+      <div class="danger-box">⚠️ هذا الإجراء لا يمكن التراجع عنه. سيتم حذف الملف وكل الزيارات المرتبطة به نهائياً.</div>
+      <div style="font-size:14px;">هل أنت متأكد من حذف: <strong id="delete-child-name" style="color:var(--red);"></strong>؟</div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">إلغاء</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" onclick="confirmDelete()">🗑️ حذف نهائي</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit child modal -->
+<div class="modal-bg" id="editModal">
+  <div class="modal">
+    <div class="mh"><span style="font-size:20px;">✏️</span><span class="mt">تعديل بيانات الطفل</span><button class="mc" onclick="closeModal('editModal')">✕</button></div>
+    <div class="mb">
+      <div class="fr">
+        <div class="fg"><label>اسم الطفل *</label><input type="text" id="edit-name"></div>
+        <div class="fg"><label>ولي الأمر *</label><input type="text" id="edit-guardian"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>تاريخ الميلاد</label><input type="date" id="edit-dob"></div>
+        <div class="fg"><label>النوع</label>
+          <select id="edit-gender"><option value="M">ذكر</option><option value="F">أنثى</option></select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>رقم الهاتف</label><input type="tel" id="edit-phone"></div>
+        <div class="fg"><label>التشخيص</label><input type="text" id="edit-diagnosis"></div>
+      </div>
+      <div class="fg"><label>ملاحظات</label><textarea id="edit-notes" rows="2"></textarea></div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('editModal')">إلغاء</button>
+      <button class="btn btn-primary" onclick="saveEdit()" id="saveEditBtn">💾 حفظ التعديلات</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ LAYOUT ════════ -->
+<div class="shell">
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <img src="Ipsen__2_.png" class="sb-logo" alt="Ipsen">
+      <div class="sb-sub">Pediatric Nutrition System</div>
+      <div class="sb-admin-badge">🔐 Admin Panel</div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-lbl">الإدارة</div>
+      <button class="nb active" onclick="showPage('overview',this)"><span class="ni">📊</span><span>نظرة عامة</span></button>
+      <button class="nb" onclick="showPage('patients',this)"><span class="ni">👶</span><span>ملفات الأطفال</span><span class="badge" id="sb-count">—</span></button>
+      <button class="nb" onclick="showPage('followups',this)"><span class="ni">📈</span><span>الزيارات</span><span class="badge" id="sb-fu-count">—</span></button>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-lbl">الإعدادات</div>
+      <button class="nb" onclick="showPage('admins',this)"><span class="ni">👥</span><span>إدارة المستخدمين</span></button>
+      <button class="nb" onclick="showPage('settings',this)"><span class="ni">⚙️</span><span>إعدادات النظام</span></button>
+      <button class="nb" onclick="showPage('backup',this)"><span class="ni">💾</span><span>النسخ الاحتياطي</span></button>
+    </div>
+
+    <div class="sb-footer">
+      <strong>NutriPed Admin v3.0</strong>
+      <div id="sb-admin-name" style="color:rgba(255,255,255,0.7);font-size:12px;margin:2px 0;">—</div>
+      <button onclick="doLogout()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;margin-bottom:6px;font-family:inherit;">🚪 تسجيل خروج</button>
+      <a class="open-app-btn" href="pediatric_nutrition_v3-1.html">
+        <span>🩺</span> فتح التطبيق الرئيسي
+      </a>
+    </div>
+  </nav>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">نظرة عامة <span>/ Admin Panel</span></div>
+      <div class="topbar-right">
+        <div class="admin-chip">🔐 <span>Andrew Nader</span></div>
+        <button class="btn btn-sm" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2);" onclick="loadAll()">🔄 تحديث</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ══ PAGE: OVERVIEW ══ -->
+      <div class="page active" id="page-overview">
+        <div class="page-header">
+          <div>
+            <div class="page-title">نظرة عامة على النظام</div>
+            <div class="page-sub" id="last-updated">جارٍ التحميل...</div>
+          </div>
+          <button class="btn btn-blue" onclick="loadAll()">🔄 تحديث البيانات</button>
+        </div>
+
+        <!-- Stats -->
+        <div class="g4">
+          <div class="stat">
+            <div class="stat-icon si-blue">👶</div>
+            <div class="stat-body">
+              <div class="stat-val" id="ov-children">—</div>
+              <div class="stat-lbl">إجمالي الأطفال</div>
+              <div class="stat-delta d-blue" id="ov-children-delta">تحميل...</div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-icon si-green">📅</div>
+            <div class="stat-body">
+              <div class="stat-val" id="ov-followups">—</div>
+              <div class="stat-lbl">إجمالي الزيارات</div>
+              <div class="stat-delta d-green" id="ov-fu-delta">تحميل...</div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-icon si-amber">📊</div>
+            <div class="stat-body">
+              <div class="stat-val" id="ov-avg">—</div>
+              <div class="stat-lbl">متوسط الزيارات/طفل</div>
+              <div class="stat-delta d-blue">زيارة</div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="stat-icon si-red">⚠️</div>
+            <div class="stat-body">
+              <div class="stat-val" id="ov-alerts">—</div>
+              <div class="stat-lbl">حالات تحتاج متابعة</div>
+              <div class="stat-delta d-red" id="ov-alerts-lbl">wasting/stunting</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent children -->
+        <div class="card">
+          <div class="ch">
+            <span style="font-size:15px;">👶</span>
+            <span class="ct">آخر الملفات المضافة</span>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('patients',null)">عرض الكل</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="tbl" id="recent-children-tbl">
+              <thead><tr>
+                <th>الاسم</th><th>ولي الأمر</th><th>العمر</th><th>النوع</th><th>الزيارات</th><th>آخر زيارة</th><th>الحالة</th>
+              </tr></thead>
+              <tbody id="recent-children-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--txt-3);">جارٍ التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Recent followups -->
+        <div class="card">
+          <div class="ch">
+            <span style="font-size:15px;">📈</span>
+            <span class="ct">آخر الزيارات المسجلة</span>
+            <button class="btn btn-ghost btn-sm" onclick="showPage('followups',null)">عرض الكل</button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr>
+                <th>الطفل</th><th>التاريخ</th><th>الوزن</th><th>الطول</th><th>BMI</th><th>W/H%</th><th>السعرات</th>
+              </tr></thead>
+              <tbody id="recent-fu-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--txt-3);">جارٍ التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /overview -->
+
+
+      <!-- ══ PAGE: PATIENTS ══ -->
+      <div class="page" id="page-patients">
+        <div class="page-header">
+          <div>
+            <div class="page-title">ملفات الأطفال</div>
+            <div class="page-sub">إدارة وتعديل وحذف ملفات المرضى</div>
+          </div>
+          <div class="search-bar" style="max-width:280px;">
+            <span>🔍</span>
+            <input type="text" id="patient-search" placeholder="بحث بالاسم أو ولي الأمر..." oninput="filterPatients()">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">
+            <span style="font-size:15px;">📋</span>
+            <span class="ct" id="patients-count-lbl">جميع الملفات</span>
+            <div style="margin-right:auto;display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="exportCSV()">📥 تصدير CSV</button>
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr>
+                <th>#</th><th>الاسم</th><th>ولي الأمر</th><th>تاريخ الميلاد</th><th>النوع</th><th>الهاتف</th><th>الزيارات</th><th>التشخيص</th><th>إجراءات</th>
+              </tr></thead>
+              <tbody id="patients-tbody">
+                <tr><td colspan="9" style="text-align:center;padding:30px;color:var(--txt-3);">جارٍ التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /patients -->
+
+
+      <!-- ══ PAGE: FOLLOWUPS ══ -->
+      <div class="page" id="page-followups">
+        <div class="page-header">
+          <div>
+            <div class="page-title">سجل الزيارات</div>
+            <div class="page-sub">عرض جميع الزيارات المحفوظة في النظام</div>
+          </div>
+          <div class="search-bar" style="max-width:280px;">
+            <span>🔍</span>
+            <input type="text" id="fu-search" placeholder="بحث..." oninput="filterFollowups()">
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="overflow-x:auto;">
+            <table class="tbl">
+              <thead><tr>
+                <th>#</th><th>الطفل</th><th>التاريخ</th><th>العمر</th><th>الوزن</th><th>الطول</th><th>BMI</th><th>W/H%</th><th>H/A%</th><th>السعرات</th><th>ملاحظات</th>
+              </tr></thead>
+              <tbody id="followups-tbody">
+                <tr><td colspan="11" style="text-align:center;padding:30px;color:var(--txt-3);">جارٍ التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /followups -->
+
+
+      <!-- ══ PAGE: SETTINGS ══ -->
+      <div class="page" id="page-settings">
+        <div class="page-header">
+          <div>
+            <div class="page-title">إعدادات النظام</div>
+            <div class="page-sub">تخصيص إعدادات NutriPed</div>
+          </div>
+        </div>
+
+        <div class="g2">
+          <div class="card">
+            <div class="ch"><span class="ct">🏥 معلومات العيادة</span></div>
+            <div class="cb">
+              <div class="fg"><label>اسم العيادة / المستشفى</label><input type="text" id="set-clinic" placeholder="مثال: عيادة التغذية العلاجية"></div>
+              <div class="fg"><label>اسم الأخصائي</label><input type="text" id="set-doctor" value="Andrew Nader"></div>
+              <div class="fg"><label>التخصص</label><input type="text" id="set-specialty" value="أخصائي تغذية علاجية"></div>
+              <div class="fg"><label>رقم الهاتف</label><input type="tel" id="set-phone" placeholder="01x..."></div>
+              <button class="btn btn-primary" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="ct">🔗 روابط النظام</span></div>
+            <div class="cb">
+              <div style="margin-bottom:14px;">
+                <div style="font-size:12px;color:var(--txt-2);margin-bottom:6px;">رابط التطبيق الرئيسي</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="text" id="app-url" value="pediatric_nutrition_v3.html" readonly style="font-family:var(--mono);font-size:12px;">
+                  <button class="btn btn-ghost btn-sm" onclick="copyUrl('app-url')">نسخ</button>
+                </div>
+              </div>
+              <div style="margin-bottom:14px;">
+                <div style="font-size:12px;color:var(--txt-2);margin-bottom:6px;">رابط Admin Panel</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <input type="text" id="admin-url" value="admin.html" readonly style="font-family:var(--mono);font-size:12px;">
+                  <button class="btn btn-ghost btn-sm" onclick="copyUrl('admin-url')">نسخ</button>
+                </div>
+              </div>
+              <div class="pill p-blue" style="font-size:12px;padding:6px 10px;">
+                💡 شارك الروابط عبر WhatsApp مع الموظفين
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><span class="ct">🔐 الوصول والصلاحيات</span></div>
+          <div class="cb">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="font-weight:600;margin-bottom:4px;color:var(--navy);">👤 موظف (User)</div>
+                <div style="font-size:12px;color:var(--txt-2);">
+                  ✅ بحث وعرض الملفات<br>
+                  ✅ إضافة زيارات جديدة<br>
+                  ✅ إدخال تحاليل<br>
+                  ❌ حذف أو تعديل بيانات<br>
+                  ❌ الوصول للـ Admin Panel
+                </div>
+              </div>
+              <div style="background:rgba(27,58,107,0.05);border:1px solid rgba(27,58,107,0.2);border-radius:8px;padding:14px;">
+                <div style="font-weight:600;margin-bottom:4px;color:var(--navy);">🔐 Admin</div>
+                <div style="font-size:12px;color:var(--txt-2);">
+                  ✅ كل صلاحيات الموظف<br>
+                  ✅ تعديل وحذف الملفات<br>
+                  ✅ عرض إحصائيات النظام<br>
+                  ✅ تصدير البيانات (CSV)<br>
+                  ✅ النسخ الاحتياطي
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:var(--txt-3);">
+              ⚠️ لتطبيق صلاحيات حقيقية، يحتاج النظام Firebase Authentication — تواصل مع المطور.
+            </div>
+          </div>
+        </div>
+      </div><!-- /settings -->
+
+
+      <!-- ══ PAGE: BACKUP ══ -->
+      <div class="page" id="page-backup">
+        <div class="page-header">
+          <div>
+            <div class="page-title">النسخ الاحتياطي والتصدير</div>
+            <div class="page-sub">تحميل بيانات النظام كاملة</div>
+          </div>
+        </div>
+
+        <div class="g2">
+          <div class="card">
+            <div class="ch"><span class="ct">📥 تصدير البيانات</span></div>
+            <div class="cb">
+              <div style="margin-bottom:14px;font-size:13px;color:var(--txt-2);">
+                تحميل نسخة احتياطية كاملة من بيانات النظام
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <button class="btn btn-primary" onclick="exportAllJSON()">
+                  📦 تصدير كل البيانات (JSON)
+                </button>
+                <button class="btn btn-blue" onclick="exportCSV()">
+                  📊 تصدير ملفات الأطفال (CSV)
+                </button>
+                <button class="btn btn-ghost" onclick="exportFollowupsCSV()">
+                  📋 تصدير الزيارات (CSV)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="ct">ℹ️ معلومات قاعدة البيانات</span></div>
+            <div class="cb">
+              <div style="display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--card);border-radius:6px;">
+                  <span style="color:var(--txt-2);">إجمالي الأطفال</span>
+                  <strong id="bk-children">—</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--card);border-radius:6px;">
+                  <span style="color:var(--txt-2);">إجمالي الزيارات</span>
+                  <strong id="bk-followups">—</strong>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:8px 12px;background:var(--card);border-radius:6px;">
+                  <span style="color:var(--txt-2);">آخر تحديث</span>
+                  <strong id="bk-updated">—</strong>
+                </div>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:12px;width:100%;justify-content:center;" onclick="loadAll()">
+                🔄 تحديث المعلومات
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:rgba(198,40,40,0.3);">
+          <div class="ch" style="background:var(--red-dim);">
+            <span style="font-size:15px;">🚨</span>
+            <span class="ct" style="color:var(--red);">منطقة الخطر</span>
+          </div>
+          <div class="cb">
+            <div class="danger-box">
+              تحذير: العمليات في هذا القسم لا يمكن التراجع عنها. تأكد من أخذ نسخة احتياطية أولاً.
+            </div>
+            <button class="btn btn-danger" onclick="if(confirm('هل أنت متأكد تماماً؟ هذا سيحذف كل البيانات!')) alert('للحذف الشامل: تواصل مع المطور مباشرة لضمان السلامة.')">
+              🗑️ حذف كل البيانات
+            </button>
+          </div>
+        </div>
+      </div><!-- /backup -->
+
+
+      <!-- ══ PAGE: ADMINS ══ -->
+      <div class="page" id="page-admins">
+        <div class="page-header">
+          <div>
+            <div class="page-title">إدارة المستخدمين</div>
+            <div class="page-sub">إضافة وتعديل وحذف حسابات الـ Admin</div>
+          </div>
+          <button class="btn btn-primary" onclick="openModal('addAdminModal')">➕ إضافة مستخدم</button>
+        </div>
+
+        <div class="card">
+          <div class="ch"><span class="ct">👥 المستخدمون الحاليون</span></div>
+          <div class="cb">
+            <div class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>#</th><th>الاسم</th><th>اسم المستخدم</th><th>الصلاحية</th><th>الحالة</th><th>إجراءات</th>
+                </tr></thead>
+                <tbody id="admins-tbody">
+                  <tr><td colspan="6" style="text-align:center;padding:30px;color:var(--txt-3);">جارٍ التحميل...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:rgba(27,58,107,0.2);background:rgba(27,58,107,0.03);">
+          <div class="ch"><span class="ct">ℹ️ الصلاحيات</span></div>
+          <div class="cb">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="font-weight:600;margin-bottom:6px;color:var(--navy);">🔐 superadmin</div>
+                <div style="font-size:12px;color:var(--txt-2);line-height:1.8;">
+                  ✅ كل الصلاحيات<br>✅ إدارة المستخدمين<br>✅ حذف البيانات<br>✅ النسخ الاحتياطي
+                </div>
+              </div>
+              <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
+                <div style="font-weight:600;margin-bottom:6px;color:var(--navy);">👤 admin</div>
+                <div style="font-size:12px;color:var(--txt-2);line-height:1.8;">
+                  ✅ عرض وتعديل الملفات<br>✅ إضافة زيارات<br>✅ الإحصائيات<br>❌ إدارة المستخدمين
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /admins -->
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- Add Admin Modal -->
+<div class="modal-bg" id="addAdminModal">
+  <div class="modal">
+    <div class="mh"><span style="font-size:20px;">👤</span><span class="mt">إضافة مستخدم جديد</span><button class="mc" onclick="closeModal('addAdminModal')">✕</button></div>
+    <div class="mb">
+      <div class="fr">
+        <div class="fg"><label>الاسم الكامل *</label><input type="text" id="aa-name" placeholder="مثال: د. نادر"></div>
+        <div class="fg"><label>اسم المستخدم *</label><input type="text" id="aa-username" placeholder="مثال: dr.nader" dir="ltr"></div>
+      </div>
+      <div class="fr">
+        <div class="fg"><label>كلمة المرور *</label><input type="password" id="aa-password" placeholder="••••••••" dir="ltr"></div>
+        <div class="fg">
+          <label>الصلاحية *</label>
+          <select id="aa-role">
+            <option value="admin">admin — مستخدم عادي</option>
+            <option value="superadmin">superadmin — صلاحيات كاملة</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-ghost" onclick="closeModal('addAdminModal')">إلغاء</button>
+      <button class="btn btn-primary" onclick="addAdmin()" id="addAdminBtn">💾 إضافة</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom Nav Mobile -->
+<nav class="bnav" id="bnav">
+  <button class="bn active" onclick="showPage('overview',this)" data-page="overview"><span class="bni">📊</span><span>عام</span></button>
+  <button class="bn" onclick="showPage('patients',this)" data-page="patients"><span class="bni">👶</span><span>الأطفال</span></button>
+  <button class="bn" onclick="showPage('followups',this)" data-page="followups"><span class="bni">📈</span><span>الزيارات</span></button>
+  <button class="bn" onclick="showPage('admins',this)" data-page="admins"><span class="bni">👥</span><span>مستخدمين</span></button>
+  <button class="bn" onclick="showPage('settings',this)" data-page="settings"><span class="bni">⚙️</span><span>إعدادات</span></button>
+</nav>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────
+let children  = [];
+let followups = [];
+let childMap  = {};
+let pendingDeleteId = null;
+let pendingEditId   = null;
+let currentAdmin    = null;   // { username, name, role }
+
+// ── Page Titles ───────────────────────────────────────────────
+const pageTitles = {
+  overview:  'نظرة عامة',
+  patients:  'ملفات الأطفال',
+  followups: 'سجل الزيارات',
+  admins:    'إدارة المستخدمين',
+  settings:  'إعدادات النظام',
+  backup:    'النسخ الاحتياطي',
+};
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const pg = document.getElementById('page-' + id);
+  if (pg) pg.classList.add('active');
+  document.querySelectorAll('.nb').forEach(b => b.classList.remove('active'));
+  const sb = document.querySelector(`.nb[onclick*="'${id}'"]`);
+  if (sb) sb.classList.add('active');
+  document.querySelectorAll('.bn').forEach(b => b.classList.remove('active'));
+  const bn = document.querySelector(`.bn[data-page="${id}"]`);
+  if (bn) bn.classList.add('active');
+  document.getElementById('topbar-title').innerHTML = `${pageTitles[id]||id} <span>/ Admin Panel</span>`;
+  closeSidebar();
+  if (id === 'admins') loadAdmins();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function showToast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function fmt(n, d=1) {
+  if (n===null||n===undefined||n==='') return '—';
+  return Number(n).toFixed(d);
+}
+function calcAge(dob) {
+  if (!dob) return '—';
+  const d=new Date(dob), now=new Date();
+  let m=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());
+  if(now.getDate()<d.getDate()) m--;
+  const y=Math.floor(m/12), mo=m%12;
+  return `${m}م (${y}س ${mo}ش)`;
+}
+function calcAgeMonths(dob) {
+  if (!dob) return 0;
+  const d=new Date(dob), now=new Date();
+  let m=(now.getFullYear()-d.getFullYear())*12+(now.getMonth()-d.getMonth());
+  if(now.getDate()<d.getDate()) m--;
+  return Math.max(0,m);
+}
+
+// ── Load All Data ─────────────────────────────────────────────
+async function loadAll() {
+  if (!window._db) { showToast('⚠️ Firebase لم يتصل بعد'); return; }
+  showToast('🔄 جارٍ تحميل البيانات...');
+
+  const {getDocs, collection, orderBy, query} = window._fb;
+
+  // Load children
+  const childSnap = await getDocs(collection(window._db, 'children'));
+  children = []; childMap = {};
+  childSnap.forEach(d => {
+    const data = { id: d.id, ...d.data() };
+    children.push(data);
+    childMap[d.id] = data;
+  });
+
+  // Load followups
+  const fuSnap = await getDocs(collection(window._db, 'followups'));
+  followups = [];
+  fuSnap.forEach(d => followups.push({ id: d.id, ...d.data() }));
+  followups.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  // Count followups per child
+  const fuCount = {};
+  followups.forEach(f => { fuCount[f.childId] = (fuCount[f.childId]||0)+1; });
+
+  // Update sidebar counts
+  document.getElementById('sb-count').textContent = children.length;
+  document.getElementById('sb-fu-count').textContent = followups.length;
+
+  // Overview stats
+  document.getElementById('ov-children').textContent  = children.length;
+  document.getElementById('ov-followups').textContent = followups.length;
+  document.getElementById('ov-avg').textContent = children.length
+    ? (followups.length/children.length).toFixed(1) : '0';
+
+  // Alerts: W/H% < 80 in any last visit
+  const alertCount = children.filter(c => {
+    const cFu = followups.filter(f=>f.childId===c.id);
+    if (!cFu.length) return false;
+    const last = cFu[0];
+    return (last.wh && last.wh < 80) || (last.ha && last.ha < 85);
+  }).length;
+  document.getElementById('ov-alerts').textContent = alertCount;
+
+  const now = new Date().toLocaleString('ar-EG');
+  document.getElementById('last-updated').textContent = `آخر تحديث: ${now}`;
+  document.getElementById('bk-children').textContent  = children.length;
+  document.getElementById('bk-followups').textContent = followups.length;
+  document.getElementById('bk-updated').textContent   = now;
+
+  // Recent children table (last 10)
+  const recentChildren = [...children]
+    .sort((a,b) => (b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
+    .slice(0,10);
+  const rcTbody = document.getElementById('recent-children-tbody');
+  if (!recentChildren.length) {
+    rcTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد بيانات</td></tr>';
+  } else {
+    rcTbody.innerHTML = recentChildren.map(c => {
+      const visits = fuCount[c.id] || 0;
+      const lastFu = followups.find(f=>f.childId===c.id);
+      const wh = lastFu?.wh;
+      const status = !wh ? '<span class="pill p-gray">—</span>'
+        : wh<70  ? '<span class="pill p-red">Severe Wasting</span>'
+        : wh<80  ? '<span class="pill p-amber">Moderate Wasting</span>'
+        : wh<90  ? '<span class="pill p-amber">Mild Wasting</span>'
+        : '<span class="pill p-green">طبيعي</span>';
+      return `<tr>
+        <td style="font-weight:600;">${c.name}</td>
+        <td>${c.guardian||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${calcAge(c.dob)}</td>
+        <td>${c.gender==='M'?'ذكر':'أنثى'}</td>
+        <td style="font-family:var(--mono);">${visits}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${lastFu?.date||'—'}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Recent followups (last 10)
+  const rfTbody = document.getElementById('recent-fu-tbody');
+  const recentFu = followups.slice(0,10);
+  if (!recentFu.length) {
+    rfTbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد زيارات</td></tr>';
+  } else {
+    rfTbody.innerHTML = recentFu.map(f => {
+      const child = childMap[f.childId];
+      return `<tr>
+        <td style="font-weight:600;">${child?.name||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${f.date||'—'}</td>
+        <td style="color:var(--blue);font-weight:600;">${fmt(f.weight)}</td>
+        <td>${fmt(f.height)}</td>
+        <td style="font-family:var(--mono);">${fmt(f.bmi)}</td>
+        <td>${f.wh?fmt(f.wh)+'%':'—'}</td>
+        <td>${f.calories||'—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Patients table
+  renderPatientsTable(fuCount);
+
+  // Followups table
+  renderFollowupsTable();
+
+  showToast('✅ تم تحميل البيانات');
+}
+
+// ── Patients Table ────────────────────────────────────────────
+function renderPatientsTable(fuCountArg) {
+  const fuCount = fuCountArg || (() => {
+    const c={};
+    followups.forEach(f=>{c[f.childId]=(c[f.childId]||0)+1;});
+    return c;
+  })();
+
+  const q = (document.getElementById('patient-search')?.value||'').toLowerCase();
+  const filtered = children.filter(c =>
+    !q || (c.name||'').toLowerCase().includes(q) || (c.guardian||'').toLowerCase().includes(q)
+  );
+
+  document.getElementById('patients-count-lbl').textContent = `${filtered.length} ملف`;
+  const tbody = document.getElementById('patients-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد نتائج</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map((c, i) => `
+    <tr>
+      <td style="font-family:var(--mono);color:var(--txt-3);">${i+1}</td>
+      <td style="font-weight:600;">${c.name}</td>
+      <td>${c.guardian||'—'}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${c.dob||'—'}</td>
+      <td>${c.gender==='M'?'ذكر':'أنثى'}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${c.phone||'—'}</td>
+      <td style="font-family:var(--mono);">${fuCount[c.id]||0}</td>
+      <td style="font-size:12px;color:var(--txt-2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.diagnosis||''}">${c.diagnosis||'—'}</td>
+      <td>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-ghost btn-icon btn-sm" title="تعديل" onclick="openEdit('${c.id}')">✏️</button>
+          <button class="btn btn-danger btn-icon btn-sm" title="حذف" onclick="openDelete('${c.id}','${c.name.replace(/'/g,"\\'")}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+function filterPatients() { renderPatientsTable(); }
+
+// ── Followups Table ───────────────────────────────────────────
+function renderFollowupsTable() {
+  const q = (document.getElementById('fu-search')?.value||'').toLowerCase();
+  const filtered = followups.filter(f => {
+    const child = childMap[f.childId];
+    return !q || (child?.name||'').toLowerCase().includes(q) || (f.date||'').includes(q);
+  });
+  const tbody = document.getElementById('followups-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد زيارات</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map((f,i) => {
+    const child = childMap[f.childId];
+    return `<tr>
+      <td style="font-family:var(--mono);color:var(--txt-3);">${i+1}</td>
+      <td style="font-weight:600;">${child?.name||'—'}</td>
+      <td style="font-family:var(--mono);font-size:12px;">${f.date||'—'}</td>
+      <td>${f.age||'—'}</td>
+      <td style="color:var(--blue);font-weight:600;">${fmt(f.weight)}</td>
+      <td>${fmt(f.height)}</td>
+      <td style="font-family:var(--mono);">${fmt(f.bmi)}</td>
+      <td>${f.wh?fmt(f.wh)+'%':'—'}</td>
+      <td>${f.ha?fmt(f.ha)+'%':'—'}</td>
+      <td>${f.calories||'—'}</td>
+      <td style="font-size:12px;color:var(--txt-2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${f.notes||''}">${f.notes||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+function filterFollowups() { renderFollowupsTable(); }
+
+// ── Edit Child ────────────────────────────────────────────────
+function openEdit(childId) {
+  const c = childMap[childId];
+  if (!c) return;
+  pendingEditId = childId;
+  document.getElementById('edit-name').value      = c.name      || '';
+  document.getElementById('edit-guardian').value  = c.guardian  || '';
+  document.getElementById('edit-dob').value       = c.dob       || '';
+  document.getElementById('edit-gender').value    = c.gender    || 'M';
+  document.getElementById('edit-phone').value     = c.phone     || '';
+  document.getElementById('edit-diagnosis').value = c.diagnosis || '';
+  document.getElementById('edit-notes').value     = c.notes     || '';
+  openModal('editModal');
+}
+
+async function saveEdit() {
+  if (!pendingEditId) return;
+  const {doc, setDoc} = window._fb;
+  const btn = document.getElementById('saveEditBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+  const updates = {
+    name:      document.getElementById('edit-name').value.trim(),
+    guardian:  document.getElementById('edit-guardian').value.trim(),
+    dob:       document.getElementById('edit-dob').value,
+    gender:    document.getElementById('edit-gender').value,
+    phone:     document.getElementById('edit-phone').value.trim(),
+    diagnosis: document.getElementById('edit-diagnosis').value.trim(),
+    notes:     document.getElementById('edit-notes').value.trim(),
+  };
+
+  try {
+    await setDoc(doc(window._db, 'children', pendingEditId), updates, {merge:true});
+    Object.assign(childMap[pendingEditId], updates);
+    const idx = children.findIndex(c=>c.id===pendingEditId);
+    if (idx>=0) Object.assign(children[idx], updates);
+    closeModal('editModal');
+    renderPatientsTable();
+    showToast('✅ تم حفظ التعديلات');
+  } catch(e) {
+    showToast('❌ خطأ: '+e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '💾 حفظ التعديلات';
+}
+
+// ── Delete Child ──────────────────────────────────────────────
+function openDelete(childId, name) {
+  pendingDeleteId = childId;
+  document.getElementById('delete-child-name').textContent = name;
+  openModal('deleteModal');
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) return;
+  const {doc, deleteDoc, collection, query, where, getDocs} = window._fb;
+  const btn = document.getElementById('confirmDeleteBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    // Delete child document
+    await deleteDoc(doc(window._db, 'children', pendingDeleteId));
+
+    // Delete all related followups
+    const fuQ = query(collection(window._db,'followups'), where('childId','==',pendingDeleteId));
+    const fuSnap = await getDocs(fuQ);
+    const delPromises = [];
+    fuSnap.forEach(d => delPromises.push(deleteDoc(doc(window._db,'followups',d.id))));
+    await Promise.all(delPromises);
+
+    // Update local state
+    children  = children.filter(c=>c.id!==pendingDeleteId);
+    followups = followups.filter(f=>f.childId!==pendingDeleteId);
+    delete childMap[pendingDeleteId];
+
+    closeModal('deleteModal');
+    await loadAll();
+    showToast(`✅ تم الحذف بنجاح (${delPromises.length} زيارة محذوفة)`);
+  } catch(e) {
+    showToast('❌ خطأ: '+e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '🗑️ حذف نهائي';
+  pendingDeleteId = null;
+}
+
+// ── Export ────────────────────────────────────────────────────
+function exportCSV() {
+  const rows = [['ID','الاسم','ولي الأمر','تاريخ الميلاد','النوع','الهاتف','التشخيص','عدد الزيارات']];
+  const fuCount = {};
+  followups.forEach(f=>{fuCount[f.childId]=(fuCount[f.childId]||0)+1;});
+  children.forEach(c => {
+    rows.push([c.id, c.name, c.guardian||'', c.dob||'', c.gender==='M'?'ذكر':'أنثى',
+               c.phone||'', c.diagnosis||'', fuCount[c.id]||0]);
+  });
+  downloadCSV(rows, 'nutriped_children.csv');
+}
+
+function exportFollowupsCSV() {
+  const rows = [['ID','اسم الطفل','التاريخ','العمر','الوزن','الطول','BMI','W/H%','H/A%','السعرات','ملاحظات']];
+  followups.forEach(f => {
+    const child = childMap[f.childId];
+    rows.push([f.id, child?.name||'', f.date||'', f.age||'', f.weight||'', f.height||'',
+               f.bmi||'', f.wh||'', f.ha||'', f.calories||'', (f.notes||'').replace(/,/g,'،')]);
+  });
+  downloadCSV(rows, 'nutriped_followups.csv');
+}
+
+function downloadCSV(rows, filename) {
+  const bom = '\uFEFF';
+  const csv = bom + rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  showToast('✅ تم التصدير');
+}
+
+function exportAllJSON() {
+  const data = { children, followups, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `nutriped_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  showToast('✅ تم تصدير النسخة الاحتياطية');
+}
+
+// ── Settings ──────────────────────────────────────────────────
+function saveSettings() {
+  const settings = {
+    clinic:    document.getElementById('set-clinic').value,
+    doctor:    document.getElementById('set-doctor').value,
+    specialty: document.getElementById('set-specialty').value,
+    phone:     document.getElementById('set-phone').value,
+  };
+  localStorage.setItem('nutriped_settings', JSON.stringify(settings));
+  showToast('✅ تم حفظ الإعدادات');
+}
+
+function loadSettings() {
+  try {
+    const s = JSON.parse(localStorage.getItem('nutriped_settings')||'{}');
+    if (s.clinic)    document.getElementById('set-clinic').value    = s.clinic;
+    if (s.doctor)    document.getElementById('set-doctor').value    = s.doctor;
+    if (s.specialty) document.getElementById('set-specialty').value = s.specialty;
+    if (s.phone)     document.getElementById('set-phone').value     = s.phone;
+  } catch(e){}
+}
+
+function copyUrl(inputId) {
+  const inp = document.getElementById(inputId);
+  navigator.clipboard.writeText(window.location.origin + '/' + inp.value)
+    .then(()=>showToast('✅ تم نسخ الرابط'))
+    .catch(()=>{ inp.select(); document.execCommand('copy'); showToast('✅ تم النسخ'); });
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOGIN / LOGOUT
+// ══════════════════════════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+
+  if (!username || !password) {
+    errEl.textContent = '⚠️ أدخل اسم المستخدم وكلمة المرور';
+    errEl.style.display = 'block'; return;
+  }
+
+  btn.textContent = '...جارٍ التحقق';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  if (!window._db) {
+    // wait a moment for Firebase to init
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  try {
+    const {getDocs, collection, query, where} = window._fb;
+    const q = query(
+      collection(window._db, 'admins'),
+      where('username', '==', username),
+      where('active', '==', true)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      errEl.textContent = '❌ اسم المستخدم غير موجود أو الحساب غير نشط';
+      errEl.style.display = 'block';
+      btn.textContent = '🔐 دخول'; btn.disabled = false; return;
+    }
+
+    const adminDoc = snap.docs[0].data();
+    if (adminDoc.password !== password) {
+      errEl.textContent = '❌ كلمة المرور غير صحيحة';
+      errEl.style.display = 'block';
+      btn.textContent = '🔐 دخول'; btn.disabled = false; return;
+    }
+
+    // ✅ Login success
+    currentAdmin = { id: snap.docs[0].id, username: adminDoc.username, name: adminDoc.name, role: adminDoc.role };
+    sessionStorage.setItem('nutriped_admin', JSON.stringify(currentAdmin));
+
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('sb-admin-name').textContent = `${adminDoc.name} · ${adminDoc.role}`;
+
+    // Hide admins management if not superadmin
+    if (adminDoc.role !== 'superadmin') {
+      document.querySelectorAll('.nb[onclick*="admins"]').forEach(b => b.style.display='none');
+    }
+
+    loadAll();
+    loadSettings();
+    showToast(`✅ مرحباً ${adminDoc.name}`);
+
+  } catch(e) {
+    errEl.textContent = '❌ خطأ: ' + e.message;
+    errEl.style.display = 'block';
+    btn.textContent = '🔐 دخول'; btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  if (!confirm('هل تريد تسجيل الخروج؟')) return;
+  sessionStorage.removeItem('nutriped_admin');
+  currentAdmin = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-btn').textContent = '🔐 دخول';
+  document.getElementById('login-btn').disabled = false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ADMINS MANAGEMENT
+// ══════════════════════════════════════════════════════════════
+async function loadAdmins() {
+  if (!window._db) return;
+  const {getDocs, collection} = window._fb;
+  try {
+    const snap = await getDocs(collection(window._db, 'admins'));
+    const admins = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const tbody = document.getElementById('admins-tbody');
+    if (!admins.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--txt-3);">لا يوجد مستخدمون</td></tr>';
+      return;
+    }
+    tbody.innerHTML = admins.map((a, i) => `
+      <tr>
+        <td style="font-family:var(--mono);color:var(--txt-3);">${i+1}</td>
+        <td style="font-weight:600;">${a.name||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${a.username||'—'}</td>
+        <td><span class="pill ${a.role==='superadmin'?'p-blue':'p-gray'}">${a.role||'admin'}</span></td>
+        <td><span class="pill ${a.active?'p-green':'p-red'}">${a.active?'نشط':'معطل'}</span></td>
+        <td>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-ghost btn-icon btn-sm" onclick="toggleAdmin('${a.id}',${!a.active})" title="${a.active?'تعطيل':'تفعيل'}">
+              ${a.active?'🔕':'✅'}
+            </button>
+            ${a.username !== currentAdmin?.username ? `
+            <button class="btn btn-danger btn-icon btn-sm" onclick="deleteAdmin('${a.id}','${(a.name||'').replace(/'/g,"\\'")}')">🗑️</button>` : '<span style="font-size:11px;color:var(--txt-3);">أنت</span>'}
+          </div>
+        </td>
+      </tr>`).join('');
+  } catch(e) {
+    showToast('❌ خطأ في تحميل المستخدمين: ' + e.message);
+  }
+}
+
+async function addAdmin() {
+  const name     = document.getElementById('aa-name').value.trim();
+  const username = document.getElementById('aa-username').value.trim();
+  const password = document.getElementById('aa-password').value;
+  const role     = document.getElementById('aa-role').value;
+
+  if (!name || !username || !password) { showToast('⚠️ أكمل البيانات المطلوبة'); return; }
+
+  const btn = document.getElementById('addAdminBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const {addDoc, collection, serverTimestamp} = window._fb;
+    await addDoc(collection(window._db, 'admins'), {
+      name, username, password, role,
+      active: true,
+      createdAt: serverTimestamp(),
+    });
+    closeModal('addAdminModal');
+    document.getElementById('aa-name').value = '';
+    document.getElementById('aa-username').value = '';
+    document.getElementById('aa-password').value = '';
+    await loadAdmins();
+    showToast('✅ تم إضافة المستخدم بنجاح');
+  } catch(e) {
+    showToast('❌ خطأ: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '💾 إضافة';
+}
+
+async function toggleAdmin(id, newActive) {
+  try {
+    const {doc, setDoc, getDoc} = window._fb;
+    const ref = doc(window._db, 'admins', id);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      await setDoc(ref, { ...snap.data(), active: newActive });
+      await loadAdmins();
+      showToast(newActive ? '✅ تم تفعيل الحساب' : '🔕 تم تعطيل الحساب');
+    }
+  } catch(e) { showToast('❌ خطأ: ' + e.message); }
+}
+
+async function deleteAdmin(id, name) {
+  if (!confirm(`هل تريد حذف حساب: ${name}؟`)) return;
+  try {
+    const {doc, deleteDoc} = window._fb;
+    await deleteDoc(doc(window._db, 'admins', id));
+    await loadAdmins();
+    showToast('✅ تم حذف الحساب');
+  } catch(e) { showToast('❌ خطأ: ' + e.message); }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+window.addEventListener('fb-ready', () => {
+  // Check if already logged in this session
+  const saved = sessionStorage.getItem('nutriped_admin');
+  if (saved) {
+    try {
+      currentAdmin = JSON.parse(saved);
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('sb-admin-name').textContent = `${currentAdmin.name} · ${currentAdmin.role}`;
+      if (currentAdmin.role !== 'superadmin') {
+        document.querySelectorAll('.nb[onclick*="admins"]').forEach(b => b.style.display='none');
+      }
+      loadAll();
+      loadSettings();
+      showToast(`✅ مرحباً ${currentAdmin.name}`);
+    } catch(e) {
+      sessionStorage.removeItem('nutriped_admin');
+    }
+  }
+  // else: login screen remains visible
+});
+</script>
+</body>
+</html>

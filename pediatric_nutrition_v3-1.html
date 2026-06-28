@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NutriPed — نظام تغذية الأطفال</title>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  // ─── REPLACE WITH YOUR CONFIG ───────────────────────────────────
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA2Hmm9PWCR2EBpWwopCwACS9iRd7kuCMM",
+    authDomain:        "nutrition--pediatric.firebaseapp.com",
+    projectId:         "nutrition--pediatric",
+    storageBucket:     "nutrition--pediatric.firebasestorage.app",
+    messagingSenderId: "230203820487",
+    appId:             "1:230203820487:web:8d8c3383de4bd009e3b1e2"
+  };
+  // ────────────────────────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  window._db  = db;
+  window._col = { children: 'children', followups: 'followups' };
+  window._fb  = { collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp };
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+/* ── Tokens – Ipsen Brand ── */
+:root {
+  /* Ipsen navy/blue light theme */
+  --bg-base:     #F0F4F9;
+  --bg-surface:  #FFFFFF;
+  --bg-card:     #EBF1F8;
+  --bg-input:    #F7FAFD;
+  --bg-hover:    #DDE8F5;
+  --border:      #C2D4E8;
+  --border-lite: #A8C0DA;
+
+  /* Ipsen primary: deep navy #1B3A6B, accent light blue #3E8FD4 */
+  --blue:      #3E8FD4;
+  --blue-dim:  #1B3A6B;
+  --blue-glow: rgba(62,143,212,0.15);
+  --teal:      #2776B8;
+  --teal-dim:  rgba(39,118,184,0.12);
+  --green:     #2E7D32;
+  --green-dim: rgba(46,125,50,0.12);
+  --amber:     #E65100;
+  --amber-dim: rgba(230,81,0,0.12);
+  --red:       #C62828;
+  --red-dim:   rgba(198,40,40,0.12);
+  --purple:    #4527A0;
+
+  --txt:     #0F2A52;
+  --txt-2:   #3A5A8A;
+  --txt-3:   #8AAAC8;
+  --txt-acc: #1B3A6B;
+
+  --sans: 'IBM Plex Sans Arabic', system-ui, sans-serif;
+  --mono: 'JetBrains Mono', monospace;
+
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px;
+  --tr: 0.18s cubic-bezier(0.4,0,0.2,1);
+
+  --sidebar-w: 220px;
+  --topbar-h: 52px;
+  --bottom-nav-h: 60px;
+}
+
+*,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
+
+html,body { height:100%; overflow:hidden; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg-base);
+  color: var(--txt);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ════════════════════════════════════════════
+   LAYOUT SHELL
+════════════════════════════════════════════ */
+.shell { display:flex; height:100vh; overflow:hidden; }
+
+/* ── Sidebar (Desktop) ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: #1B3A6B;
+  border-left: 1px solid #142E58;
+  display: flex; flex-direction: column;
+  overflow-y: auto; z-index: 20;
+  transition: width var(--tr);
+}
+.sidebar-brand {
+  padding: 12px 14px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  background:#142E58;
+}
+.logo { display:flex; align-items:flex-start; flex-direction:column; gap:4px; }
+.logo-img { width:138px; height:auto; filter:brightness(0) invert(1); }
+.logo-text { font-size:11px; font-weight:600; line-height:1.2; color:rgba(255,255,255,0.85); }
+.logo-sub  { font-size:10px; color:rgba(255,255,255,0.45); margin-top:1px; }
+
+.sidebar-section { padding: 6px 8px 0; }
+.section-lbl {
+  font-size:10px; font-weight:600; color:rgba(255,255,255,0.38);
+  text-transform:uppercase; letter-spacing:.08em;
+  padding: 10px 8px 4px;
+}
+.nav-btn {
+  display:flex; align-items:center; gap:10px;
+  padding: 9px 10px; border-radius: var(--r-sm);
+  cursor:pointer; color:rgba(255,255,255,0.65); font-size:13px; font-weight:500;
+  border:none; background:none; width:100%; text-align:right;
+  font-family: var(--sans); margin-bottom:2px;
+  transition: background var(--tr), color var(--tr);
+}
+.nav-btn:hover { background:rgba(255,255,255,0.09); color:#fff; }
+.nav-btn.active {
+  background: rgba(255,255,255,0.16);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.28);
+}
+.nav-btn .ni { font-size:15px; flex-shrink:0; }
+.sidebar-footer {
+  margin-top:auto; padding:12px; border-top:1px solid rgba(255,255,255,0.1);
+  font-size:11px; color:rgba(255,255,255,0.38);
+}
+.vtag {
+  background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);
+  border-radius:4px; padding:3px 8px;
+  font-family:var(--mono); font-size:10px; color:rgba(255,255,255,0.6);
+  display:inline-block; margin-bottom:6px;
+}
+
+/* ── Main ── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+/* ── Topbar ── */
+.topbar {
+  height:var(--topbar-h); min-height:var(--topbar-h);
+  background:#1B3A6B;
+  border-bottom:1px solid #142E58;
+  display:flex; align-items:center; gap:10px; padding:0 16px;
+  z-index:10;
+}
+.topbar-title { font-size:15px; font-weight:600; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:#fff; }
+.topbar-title span { color:rgba(255,255,255,0.55); font-weight:400; font-size:13px; margin-right:6px; }
+
+/* Mobile menu toggle */
+.menu-toggle {
+  display:none;
+  width:34px; height:34px; border-radius:var(--r-sm);
+  border:1px solid rgba(255,255,255,0.2); background:transparent;
+  color:rgba(255,255,255,0.85); font-size:18px; cursor:pointer;
+  align-items:center; justify-content:center;
+  transition: background var(--tr);
+}
+.menu-toggle:hover { background:rgba(255,255,255,0.1); color:#fff; }
+
+/* ── Content ── */
+.content {
+  flex:1; overflow-y:auto; padding:16px;
+  display:flex; flex-direction:column; gap:14px;
+  padding-bottom: 24px;
+}
+
+/* ── Bottom Nav (Mobile only) ── */
+.bottom-nav {
+  display:none;
+  position:fixed; bottom:0; left:0; right:0;
+  height:var(--bottom-nav-h);
+  background:#1B3A6B;
+  border-top:1px solid #142E58;
+  z-index:100;
+  padding:0 4px;
+  justify-content:space-around; align-items:center;
+}
+.bn-btn {
+  display:flex; flex-direction:column; align-items:center; gap:2px;
+  font-family:var(--sans); font-size:9px; font-weight:500;
+  color:rgba(255,255,255,0.5); background:none; border:none; cursor:pointer;
+  padding:6px 10px; border-radius:var(--r-sm);
+  transition:all var(--tr); flex:1;
+}
+.bn-btn .bni { font-size:18px; line-height:1; }
+.bn-btn.active { color:#fff; }
+.bn-btn.active .bni { filter: drop-shadow(0 0 4px var(--blue)); }
+
+/* Mobile drawer overlay */
+.drawer-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.6); z-index:50;
+}
+.drawer-overlay.open { display:block; }
+.sidebar.drawer-open {
+  position:fixed; top:0; right:0; bottom:0;
+  z-index:60; box-shadow:-8px 0 24px rgba(0,0,0,.5);
+}
+
+/* ════════════════════════════════════════════
+   COMPONENTS
+════════════════════════════════════════════ */
+.btn {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:var(--r-sm);
+  font-family:var(--sans); font-size:13px; font-weight:500;
+  cursor:pointer; border:none; transition:all var(--tr);
+  white-space:nowrap;
+}
+.btn-primary  { background:var(--blue); color:#fff; }
+.btn-primary:hover { background:#1976D2; box-shadow:0 0 0 3px var(--blue-glow); }
+.btn-ghost    { background:transparent; color:var(--txt-2); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--bg-hover); color:var(--txt); }
+/* topbar ghost override */
+.topbar .btn-ghost { color:rgba(255,255,255,0.8); border-color:rgba(255,255,255,0.2); }
+.topbar .btn-ghost:hover { background:rgba(255,255,255,0.1); color:#fff; }
+.btn-success  { background:var(--green); color:#fff; }
+.btn-success:hover { background:#388E3C; }
+.btn-danger   { background:var(--red); color:#fff; }
+.btn-danger:hover { background:#C62828; }
+.btn-sm { padding:5px 12px; font-size:12px; }
+.btn-full { width:100%; justify-content:center; }
+
+.icon-btn {
+  width:34px; height:34px; border-radius:var(--r-sm);
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:1px solid rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.8); cursor:pointer; font-size:15px;
+  transition:all var(--tr);
+}
+.icon-btn:hover { background:rgba(255,255,255,0.1); color:#fff; }
+
+/* Card */
+.card { background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--r-md); overflow:hidden; }
+.card-header {
+  padding:11px 14px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+}
+.card-title { font-size:13px; font-weight:600; flex:1; }
+.card-icon  { font-size:15px; }
+.card-body  { padding:14px; }
+
+/* Grid */
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+
+/* Metric card */
+.mc {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--r-md); padding:13px 15px; position:relative; overflow:hidden;
+}
+.mc-label { font-size:11px; color:var(--txt-2); font-weight:500; margin-bottom:5px; }
+.mc-value { font-size:24px; font-weight:700; font-family:var(--mono); line-height:1; }
+.mc-unit  { font-size:11px; color:var(--txt-2); margin-top:3px; }
+.mc-bar   { margin-top:8px; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.mc-bar-fill { height:100%; border-radius:2px; transition:width .6s; }
+.bar-blue  { background:var(--blue); }
+.bar-green { background:var(--green); }
+.bar-amber { background:var(--amber); }
+.bar-red   { background:var(--red); }
+
+/* Form fields */
+.fg { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.fg:last-child { margin-bottom:0; }
+label { font-size:12px; font-weight:500; color:var(--txt-2); }
+
+input[type="text"], input[type="number"], input[type="date"],
+input[type="tel"], input[type="search"], select, textarea {
+  width:100%; background:var(--bg-input); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--txt); font-family:var(--sans);
+  font-size:13px; padding:8px 12px; outline:none;
+  transition:border-color var(--tr), box-shadow var(--tr);
+  direction:rtl; -webkit-appearance:none;
+}
+input:focus,select:focus,textarea:focus {
+  border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow);
+}
+input[type="number"] { font-family:var(--mono); font-size:14px; }
+select option { background:var(--bg-surface); }
+textarea { resize:vertical; min-height:80px; }
+input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:default; }
+
+.inp-unit {
+  display:flex; align-items:center;
+  background:var(--bg-input); border:1px solid var(--border);
+  border-radius:var(--r-sm); overflow:hidden;
+  transition:border-color var(--tr), box-shadow var(--tr);
+}
+.inp-unit input { border:none !important; box-shadow:none !important; flex:1; min-width:0; }
+.inp-unit .ul {
+  padding:0 10px; font-size:11px; font-weight:600;
+  color:var(--txt-3); background:var(--bg-hover);
+  border-right:1px solid var(--border);
+  height:38px; display:flex; align-items:center; white-space:nowrap;
+}
+.inp-unit:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow); }
+
+.fr { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fr3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+
+/* Pill & badge */
+.pill {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;
+}
+.pill-green  { background:var(--green-dim);  color:var(--green); }
+.pill-red    { background:var(--red-dim);    color:var(--red);   }
+.pill-amber  { background:var(--amber-dim);  color:var(--amber); }
+.pill-muted  { background:var(--bg-hover);   color:var(--txt-3); }
+.pill-blue   { background:var(--blue-glow);  color:var(--blue);  }
+
+.status-badge { padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.s-ok      { background:var(--green-dim); color:var(--green); border:1px solid rgba(76,175,80,.3); }
+.s-warn    { background:var(--amber-dim); color:var(--amber); border:1px solid rgba(255,152,0,.3); }
+.s-danger  { background:var(--red-dim);   color:var(--red);   border:1px solid rgba(244,67,54,.3); }
+.s-muted   { background:var(--bg-hover);  color:var(--txt-2); border:1px solid var(--border); }
+
+/* Alert */
+.alert {
+  padding:10px 14px; border-radius:var(--r-sm);
+  display:flex; align-items:flex-start; gap:10px;
+  font-size:13px; border-right:3px solid; margin-bottom:8px;
+}
+.alert-info    { background:var(--blue-glow);  border-color:var(--blue); }
+.alert-warning { background:var(--amber-dim);  border-color:var(--amber);}
+.alert-danger  { background:var(--red-dim);    border-color:var(--red);  }
+
+/* Tabs */
+.tabs { display:flex; gap:3px; padding:3px; background:var(--bg-base); border-radius:var(--r-sm); flex-wrap:wrap; }
+.tab  {
+  padding:6px 14px; border-radius:var(--r-sm); font-size:12px; font-weight:500;
+  cursor:pointer; color:var(--txt-2); background:transparent;
+  border:none; font-family:var(--sans); transition:all var(--tr);
+}
+.tab:hover { color:var(--txt); background:var(--bg-hover); }
+.tab.active { background:var(--bg-surface); color:var(--txt-acc); border:1px solid var(--border); }
+
+/* Divider */
+.divider { height:1px; background:var(--border); margin:10px 0; }
+.slbl {
+  font-size:11px; font-weight:600; color:var(--txt-3);
+  text-transform:uppercase; letter-spacing:.07em; margin-bottom:8px;
+}
+
+/* Page visibility */
+.page { display:none; flex-direction:column; gap:14px; }
+.page.active { display:flex; }
+
+/* ── Patient header strip ── */
+.patient-header {
+  background:var(--bg-surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:16px 18px;
+  display:flex; align-items:center; gap:14px;
+  position:relative; overflow:hidden; flex-wrap:wrap;
+}
+.patient-header::before {
+  content:''; position:absolute; top:0; right:0;
+  width:4px; height:100%;
+  background:linear-gradient(180deg, #3E8FD4, #1B3A6B);
+}
+.pat-avatar {
+  width:48px; height:48px; border-radius:50%;
+  background:linear-gradient(135deg, rgba(62,143,212,0.18), rgba(27,58,107,0.1));
+  border:2px solid var(--border-lite);
+  display:flex; align-items:center; justify-content:center;
+  font-size:22px; flex-shrink:0;
+}
+.pat-info { flex:1; min-width:0; }
+.pat-name { font-size:17px; font-weight:700; margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pat-meta { display:flex; gap:12px; flex-wrap:wrap; }
+.meta-chip { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--txt-2); }
+.meta-chip strong { color:var(--txt); font-weight:600; }
+
+/* ── Lab table ── */
+.lab-table { width:100%; border-collapse:collapse; }
+.lab-table th {
+  font-size:11px; font-weight:600; color:var(--txt-3);
+  text-transform:uppercase; letter-spacing:.06em;
+  padding:8px 11px; text-align:right;
+  border-bottom:1px solid var(--border); background:var(--bg-base);
+  white-space:nowrap;
+}
+.lab-table td { padding:8px 11px; border-bottom:1px solid var(--border); font-size:13px; }
+.lab-table tr:last-child td { border-bottom:none; }
+.lab-table tbody tr:hover td { background:var(--bg-hover); }
+.lab-cat td {
+  font-size:11px !important; font-weight:700; color:var(--txt-acc);
+  letter-spacing:.05em; text-transform:uppercase;
+  background:var(--bg-base) !important; padding:5px 11px;
+}
+.lab-inp {
+  width:88px; padding:5px 8px;
+  background:var(--bg-input); border:1px solid var(--border);
+  border-radius:var(--r-sm); color:var(--txt);
+  font-family:var(--mono); font-size:13px;
+  outline:none; text-align:center; direction:ltr;
+  transition:border-color var(--tr), box-shadow var(--tr);
+}
+.lab-inp:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow); }
+.lab-inp.v-low  { border-color:var(--red);   background:var(--red-dim); }
+.lab-inp.v-high { border-color:var(--amber); background:var(--amber-dim); }
+.lab-inp.v-ok   { border-color:var(--green); background:var(--green-dim); }
+
+/* ── Timeline ── */
+.timeline { display:flex; flex-direction:column; }
+.tl-item {
+  display:flex; gap:12px; padding:11px 0;
+  border-bottom:1px solid var(--border);
+}
+.tl-item:last-child { border-bottom:none; }
+.tl-dot { width:10px; height:10px; border-radius:50%; background:var(--blue); margin-top:5px; flex-shrink:0; box-shadow:0 0 0 3px var(--blue-glow); }
+.tl-content { flex:1; }
+.tl-date { font-size:11px; color:var(--txt-2); font-family:var(--mono); }
+.tl-vals { display:flex; gap:10px; flex-wrap:wrap; margin-top:3px; }
+.tl-val  { font-size:12px; }
+.tl-val span { color:var(--txt-2); font-size:11px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width:5px; height:5px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border-lite); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--txt-3); }
+
+/* ════════════════════════════════════════════
+   MODAL / OVERLAY
+════════════════════════════════════════════ */
+.modal-bg {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,.7); z-index:200;
+  align-items:center; justify-content:center; padding:16px;
+}
+.modal-bg.open { display:flex; }
+.modal {
+  background:var(--bg-surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); width:100%; max-width:560px;
+  max-height:90vh; overflow-y:auto;
+  box-shadow:0 24px 64px rgba(0,0,0,.5);
+}
+.modal-header {
+  padding:16px 18px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.modal-title { font-size:15px; font-weight:700; flex:1; }
+.modal-close {
+  width:28px; height:28px; border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:1px solid var(--border);
+  color:var(--txt-2); cursor:pointer; font-size:16px;
+  transition:all var(--tr);
+}
+.modal-close:hover { background:var(--red-dim); color:var(--red); }
+.modal-body { padding:18px; }
+.modal-footer { padding:14px 18px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+
+/* Search results list */
+.search-results { margin-top:12px; display:flex; flex-direction:column; gap:6px; max-height:280px; overflow-y:auto; }
+.search-result-item {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  padding:10px 12px; background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--r-md); cursor:pointer; transition:all var(--tr);
+}
+.search-result-item:hover { border-color:var(--blue); background:var(--blue-glow); }
+.sri-name { font-weight:600; font-size:13px; }
+.sri-meta { font-size:11px; color:var(--txt-2); margin-top:2px; }
+
+/* Empty state */
+.empty-state {
+  text-align:center; padding:40px 20px; color:var(--txt-2);
+}
+.empty-state .es-icon { font-size:48px; margin-bottom:12px; opacity:.5; }
+.empty-state h3 { font-size:16px; font-weight:600; color:var(--txt); margin-bottom:6px; }
+.empty-state p { font-size:13px; }
+
+/* Toast */
+#toast {
+  position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+  background:var(--bg-card); border:1px solid var(--border-lite);
+  border-radius:var(--r-md); padding:10px 18px; font-size:13px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:300;
+  opacity:0; transition:all .3s; pointer-events:none;
+  white-space:nowrap;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* Loading spinner */
+.spinner {
+  width:20px; height:20px; border-radius:50%;
+  border:2px solid var(--border);
+  border-top-color:var(--blue);
+  animation:spin .7s linear infinite;
+  display:inline-block;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+════════════════════════════════════════════ */
+@media (max-width:768px) {
+  /* Show mobile controls */
+  .menu-toggle { display:flex; }
+  .bottom-nav  { display:flex; }
+
+  /* Hide sidebar by default on mobile */
+  .sidebar {
+    position:fixed; top:0; right:-100%; bottom:0;
+    width:260px; min-width:0;
+    transition: right var(--tr);
+    z-index:60;
+  }
+  .sidebar.open { right:0; }
+
+  /* Extra bottom padding for bottom nav */
+  .content { padding-bottom:calc(var(--bottom-nav-h) + 12px); }
+
+  /* Collapse grids */
+  .g2, .g3, .g4 { grid-template-columns:1fr; }
+  .fr  { grid-template-columns:1fr 1fr; }
+  .fr3 { grid-template-columns:1fr 1fr; }
+
+  /* Topbar */
+  .topbar { padding:0 12px; }
+  .topbar-title { font-size:13px; }
+
+  /* Patient header */
+  .patient-header { padding:12px 14px; }
+  .pat-name { font-size:14px; }
+  .pat-avatar { width:40px; height:40px; font-size:18px; }
+
+  /* Lab table – horizontal scroll */
+  .lab-table-wrap { overflow-x:auto; }
+  .lab-inp { width:75px; }
+
+  /* Modal full-width */
+  .modal { max-width:100%; margin:0; border-radius:var(--r-lg) var(--r-lg) 0 0; }
+  .modal-bg { align-items:flex-end; padding:0; }
+
+  /* Toast above bottom nav */
+  #toast { bottom:calc(var(--bottom-nav-h) + 10px); }
+}
+
+@media (max-width:480px) {
+  .fr3 { grid-template-columns:1fr; }
+  .tabs { gap:2px; }
+  .tab  { padding:5px 10px; font-size:11px; }
+  .btn  { padding:7px 12px; font-size:12px; }
+}
+
+/* ── Print ── */
+@media print {
+  .sidebar, .topbar, .bottom-nav, .drawer-overlay { display:none !important; }
+  .shell { display:block; }
+  .main  { overflow:visible; }
+  .content { overflow:visible; padding:0; }
+  .page { display:flex !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ LOGIN SCREEN ════════ -->
+<div id="loginScreen" style="
+  position:fixed;inset:0;background:#F0F4F9;z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+">
+  <div style="
+    background:#fff;border-radius:16px;padding:36px 32px;
+    width:340px;max-width:95vw;
+    box-shadow:0 8px 40px rgba(27,58,107,0.15);
+    border:1px solid #C2D4E8;
+  ">
+    <div style="text-align:center;margin-bottom:24px;">
+      <img src="Ipsen__2_.png" style="width:130px;margin-bottom:12px;" onerror="this.style.display='none'">
+      <div style="font-size:18px;font-weight:700;color:#1B3A6B;">NutriPed</div>
+      <div style="font-size:12px;color:#8AAAC8;margin-top:3px;">نظام تغذية الأطفال</div>
+    </div>
+    <div id="login-error" style="display:none;background:#FFEBEE;border:1px solid #EF9A9A;border-radius:8px;padding:10px 14px;font-size:13px;color:#C62828;margin-bottom:14px;"></div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">اسم المستخدم</label>
+      <input type="text" id="login-user" placeholder="username" autocomplete="username"
+        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:600;color:#3A5A8A;display:block;margin-bottom:5px;">كلمة المرور</label>
+      <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password"
+        style="width:100%;padding:10px 12px;border:1px solid #C2D4E8;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#F7FAFD;"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button onclick="doLogin()" id="login-btn" style="
+      width:100%;padding:12px;background:#1B3A6B;color:#fff;border:none;
+      border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    ">🔐 دخول</button>
+    <div style="text-align:center;margin-top:16px;font-size:11px;color:#8AAAC8;">
+      NutriPed · Pediatric Nutrition System · Ipsen
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Drawer overlay -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
+
+<!-- ══════════════════════════════
+     SEARCH / NEW PATIENT MODAL
+══════════════════════════════ -->
+<div class="modal-bg" id="searchModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:20px;">🔍</span>
+      <span class="modal-title">البحث عن طفل / إضافة جديد</span>
+      <button class="modal-close" onclick="closeModal('searchModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="slbl">ابحث أولاً قبل إنشاء ملف جديد</div>
+      <div class="fr" style="margin-bottom:10px;">
+        <div class="fg">
+          <label>اسم الطفل</label>
+          <input type="text" id="s-name" placeholder="جزء من الاسم...">
+        </div>
+        <div class="fg">
+          <label>اسم ولي الأمر</label>
+          <input type="text" id="s-guardian" placeholder="اسم الأب/الأم...">
+        </div>
+      </div>
+      <div class="fr" style="margin-bottom:10px;">
+        <div class="fg">
+          <label>تاريخ الميلاد</label>
+          <input type="date" id="s-dob">
+        </div>
+        <div class="fg">
+          <label>رقم الهاتف (اختياري)</label>
+          <input type="tel" id="s-phone" placeholder="01x...">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="searchChildren()" id="searchBtn">
+        <span>🔍</span> بحث
+      </button>
+      <div id="search-results-area" class="search-results"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('searchModal')">إلغاء</button>
+      <button class="btn btn-success" onclick="openNewChildModal()">➕ طفل جديد</button>
+    </div>
+  </div>
+</div>
+
+<!-- New Child Modal -->
+<div class="modal-bg" id="newChildModal">
+  <div class="modal">
+    <div class="modal-header">
+      <span style="font-size:20px;">👶</span>
+      <span class="modal-title">إنشاء ملف طفل جديد</span>
+      <button class="modal-close" onclick="closeModal('newChildModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fr">
+        <div class="fg">
+          <label>اسم الطفل *</label>
+          <input type="text" id="nc-name" placeholder="الاسم الكامل">
+        </div>
+        <div class="fg">
+          <label>اسم ولي الأمر *</label>
+          <input type="text" id="nc-guardian" placeholder="اسم الأب / الأم">
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg">
+          <label>تاريخ الميلاد *</label>
+          <input type="date" id="nc-dob">
+        </div>
+        <div class="fg">
+          <label>النوع *</label>
+          <select id="nc-gender">
+            <option value="">اختر</option>
+            <option value="M">ذكر</option>
+            <option value="F">أنثى</option>
+          </select>
+        </div>
+      </div>
+      <div class="fr">
+        <div class="fg">
+          <label>رقم الهاتف</label>
+          <input type="tel" id="nc-phone" placeholder="اختياري">
+        </div>
+        <div class="fg">
+          <label>الحالة / التشخيص</label>
+          <input type="text" id="nc-diagnosis" placeholder="مثال: سوء التغذية...">
+        </div>
+      </div>
+      <div class="fg">
+        <label>ملاحظات عامة</label>
+        <textarea id="nc-notes" rows="2" placeholder="حساسية، أدوية..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('newChildModal')">رجوع</button>
+      <button class="btn btn-primary" onclick="createNewChild()" id="createBtn">
+        <span>💾</span> حفظ وفتح الملف
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     MAIN LAYOUT
+════════════════════════════════ -->
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo">
+        <img src="Ipsen__2_.png" class="logo-img" alt="Ipsen">
+        <div class="logo-text">NutriPed · نظام تغذية الأطفال</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-lbl">الرئيسية</div>
+      <button class="nav-btn active" onclick="showPage('dashboard',this)">
+        <span class="ni">📊</span><span>لوحة المتابعة</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('patient',this)">
+        <span class="ni">👶</span><span>بيانات الطفل</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('lab',this)">
+        <span class="ni">🔬</span><span>التحاليل المخبرية</span>
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-lbl">تقارير</div>
+      <button class="nav-btn" onclick="showPage('followup',this)">
+        <span class="ni">📈</span><span>سجل المتابعة</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('nutrition',this)">
+        <span class="ni">🥗</span><span>الاحتياجات الغذائية</span>
+      </button>
+      <button class="nav-btn" onclick="showPage('growth',this)">
+        <span class="ni">📉</span><span>منحنيات النمو</span>
+      </button>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="vtag">v3.0</div>
+      <div>Andrew Nader<br>أخصائي تغذية علاجية</div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title" id="topbar-title">
+        لوحة المتابعة <span>/ نظام التغذية للأطفال</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="icon-btn" title="طباعة" onclick="window.print()">🖨️</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('searchModal')">
+          🔍 <span class="hide-xs">فتح / جديد</span>
+        </button>
+        <button class="btn btn-success btn-sm" onclick="saveFollowup()" id="saveFollowupBtn" style="display:none;">
+          💾 <span class="hide-xs">حفظ الزيارة</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content" id="contentArea">
+
+      <!-- ══════════ PAGE: DASHBOARD ══════════ -->
+      <div class="page active" id="page-dashboard">
+
+        <!-- Empty state when no patient -->
+        <div id="no-patient-state">
+          <div class="empty-state">
+            <div class="es-icon">🩺</div>
+            <h3>لا يوجد ملف مفتوح</h3>
+            <p>ابحث عن طفل أو أنشئ ملفاً جديداً للبدء</p>
+            <br>
+            <button class="btn btn-primary" onclick="openModal('searchModal')">
+              🔍 بحث / إضافة طفل جديد
+            </button>
+          </div>
+        </div>
+
+        <!-- Patient dashboard (hidden until child loaded) -->
+        <div id="patient-dashboard" style="display:none; flex-direction:column; gap:14px;">
+
+          <div class="patient-header">
+            <div class="pat-avatar">👶</div>
+            <div class="pat-info">
+              <div class="pat-name" id="dash-name">—</div>
+              <div class="pat-meta">
+                <div class="meta-chip">🗓 <strong id="dash-age">—</strong> شهراً</div>
+                <div class="meta-chip">⚖️ <strong id="dash-weight">—</strong> كجم</div>
+                <div class="meta-chip">📏 <strong id="dash-height">—</strong> سم</div>
+                <div class="meta-chip">🩺 BMI: <strong id="dash-bmi">—</strong></div>
+              </div>
+            </div>
+            <div id="dash-status" class="status-badge s-muted">أدخل البيانات</div>
+          </div>
+
+          <div class="g4">
+            <div class="mc">
+              <div class="mc-label">الوزن المثالي</div>
+              <div class="mc-value" id="m-ibw" style="color:var(--blue)">—</div>
+              <div class="mc-unit">كجم</div>
+              <div class="mc-bar"><div class="mc-bar-fill bar-blue" id="bar-ibw" style="width:0%"></div></div>
+            </div>
+            <div class="mc">
+              <div class="mc-label">السعرات / يوم</div>
+              <div class="mc-value" id="m-cal" style="color:var(--teal)">—</div>
+              <div class="mc-unit">كيلو كالوري</div>
+              <div class="mc-bar"><div class="mc-bar-fill bar-green" style="width:60%"></div></div>
+            </div>
+            <div class="mc">
+              <div class="mc-label">البروتين اليومي</div>
+              <div class="mc-value" id="m-prot" style="color:var(--green)">—</div>
+              <div class="mc-unit">جرام</div>
+              <div class="mc-bar"><div class="mc-bar-fill bar-green" style="width:55%"></div></div>
+            </div>
+            <div class="mc">
+              <div class="mc-label">السوائل اليومية</div>
+              <div class="mc-value" id="m-fluid" style="color:var(--amber)">—</div>
+              <div class="mc-unit">مل</div>
+              <div class="mc-bar"><div class="mc-bar-fill bar-amber" style="width:70%"></div></div>
+            </div>
+          </div>
+
+          <div class="g2">
+            <div class="card">
+              <div class="card-header"><span class="card-icon">📊</span><span class="card-title">مؤشرات النمو</span></div>
+              <div class="card-body">
+                <div class="g2">
+                  <div>
+                    <div class="mc-label">W/H% (ووترلو)</div>
+                    <div class="mc-value" id="m-wh" style="font-size:20px;color:var(--green)">—</div>
+                    <div id="wh-class" class="pill pill-muted" style="margin-top:4px;font-size:10px;">—</div>
+                  </div>
+                  <div>
+                    <div class="mc-label">H/A% (التقزم)</div>
+                    <div class="mc-value" id="m-ha" style="font-size:20px;color:var(--blue)">—</div>
+                    <div id="ha-class" class="pill pill-muted" style="margin-top:4px;font-size:10px;">—</div>
+                  </div>
+                  <div>
+                    <div class="mc-label">W/A%</div>
+                    <div class="mc-value" id="m-wa" style="font-size:20px;color:var(--teal)">—</div>
+                    <div id="wa-class" class="pill pill-muted" style="margin-top:4px;font-size:10px;">—</div>
+                  </div>
+                  <div>
+                    <div class="mc-label">BMI</div>
+                    <div class="mc-value" id="m-bmi2" style="font-size:20px;color:var(--purple)">—</div>
+                    <div id="bmi-class" class="pill pill-muted" style="margin-top:4px;font-size:10px;">—</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-icon">⚡</span><span class="card-title">التوصيات الفورية</span></div>
+              <div class="card-body" id="alerts-box">
+                <div style="color:var(--txt-2);font-size:13px;text-align:center;padding:16px 0;">
+                  أدخل قياسات الزيارة لعرض التوصيات
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><span class="card-icon">🥗</span><span class="card-title">توزيع الكبروغذيات اليومية</span></div>
+            <div class="card-body">
+              <div id="macro-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+                <div style="text-align:center;color:var(--txt-2);">أدخل البيانات أولاً</div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /patient-dashboard -->
+      </div><!-- /page-dashboard -->
+
+
+      <!-- ══════════ PAGE: PATIENT ══════════ -->
+      <div class="page" id="page-patient">
+        <div id="patient-info-bar" class="patient-header" style="display:none;">
+          <div class="pat-avatar">👶</div>
+          <div class="pat-info">
+            <div class="pat-name" id="pi-name">—</div>
+            <div class="pat-meta">
+              <div class="meta-chip">ولي الأمر: <strong id="pi-guardian">—</strong></div>
+              <div class="meta-chip">🗓 <strong id="pi-age">—</strong> شهراً</div>
+              <div class="meta-chip" id="pi-phone-chip" style="display:none;">📞 <strong id="pi-phone">—</strong></div>
+              <div class="meta-chip" id="pi-visits-chip">0 زيارات سابقة</div>
+            </div>
+          </div>
+          <div id="pi-status" class="status-badge s-muted">—</div>
+        </div>
+
+        <div class="g2">
+          <!-- Basic info read-only + visit data -->
+          <div class="card">
+            <div class="card-header"><span class="card-icon">👶</span><span class="card-title">بيانات الطفل</span></div>
+            <div class="card-body">
+              <div class="fr">
+                <div class="fg"><label>اسم الطفل</label><input type="text" id="p-name" readonly></div>
+                <div class="fg"><label>ولي الأمر</label><input type="text" id="p-guardian" readonly></div>
+              </div>
+              <div class="fr">
+                <div class="fg"><label>تاريخ الميلاد</label><input type="date" id="p-dob" readonly></div>
+                <div class="fg"><label>النوع</label><input type="text" id="p-gender-txt" readonly></div>
+              </div>
+              <div class="fr">
+                <div class="fg"><label>العمر (تلقائي)</label><input type="text" id="p-age-text" readonly></div>
+                <div class="fg"><label>تاريخ الزيارة</label><input type="date" id="p-visit"></div>
+              </div>
+              <div class="fg"><label>التشخيص / الحالة</label><input type="text" id="p-diagnosis" placeholder="تشخيص هذه الزيارة..."></div>
+              <div class="fr">
+                <div class="fg">
+                  <label>نوع الرضاعة</label>
+                  <select id="p-feeding">
+                    <option value="">اختر</option>
+                    <option>رضاعة طبيعية</option>
+                    <option>رضاعة صناعية</option>
+                    <option>مختلط</option>
+                    <option>طعام كامل</option>
+                  </select>
+                </div>
+                <div class="fg">
+                  <label>مستوى النشاط</label>
+                  <select id="p-activity" onchange="recalcAll()">
+                    <option value="1.2">خامل (1.2)</option>
+                    <option value="1.375" selected>خفيف (1.375)</option>
+                    <option value="1.55">متوسط (1.55)</option>
+                    <option value="1.725">نشط (1.725)</option>
+                    <option value="1.9">مكثف (1.9)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="fg"><label>أدوية / حساسية</label><input type="text" id="p-meds" placeholder="إن وجدت"></div>
+            </div>
+          </div>
+
+          <!-- Measurements -->
+          <div class="card">
+            <div class="card-header"><span class="card-icon">📏</span><span class="card-title">القياسات الأنثروبومترية</span></div>
+            <div class="card-body">
+              <div class="slbl">قياسات هذه الزيارة</div>
+              <div class="fr">
+                <div class="fg"><label>الوزن الحالي</label>
+                  <div class="inp-unit"><input type="number" id="p-weight" step="0.1" min="0" placeholder="0.0" oninput="recalcAll()"><span class="ul">كجم</span></div>
+                </div>
+                <div class="fg"><label>الطول الحالي</label>
+                  <div class="inp-unit"><input type="number" id="p-height" step="0.1" min="0" placeholder="0.0" oninput="recalcAll()"><span class="ul">سم</span></div>
+                </div>
+              </div>
+              <div class="fr3">
+                <div class="fg"><label>محيط الرأس</label>
+                  <div class="inp-unit"><input type="number" id="p-head" step="0.1" min="0" placeholder="0.0"><span class="ul">سم</span></div>
+                </div>
+                <div class="fg"><label>محيط الوسط</label>
+                  <div class="inp-unit"><input type="number" id="p-waist" step="0.1" min="0" placeholder="0.0"><span class="ul">سم</span></div>
+                </div>
+                <div class="fg"><label>محيط الورك</label>
+                  <div class="inp-unit"><input type="number" id="p-hip" step="0.1" min="0" placeholder="0.0"><span class="ul">سم</span></div>
+                </div>
+              </div>
+
+              <div class="divider"></div>
+              <div class="slbl">مقارنة بالزيارة السابقة</div>
+              <div class="fr">
+                <div class="fg"><label>آخر وزن مسجل</label>
+                  <div class="inp-unit"><input type="number" id="p-prev-weight" step="0.1" min="0" placeholder="0.0" oninput="recalcAll()"><span class="ul">كجم</span></div>
+                </div>
+                <div class="fg"><label>تاريخ الزيارة السابقة</label><input type="date" id="p-prev-date"></div>
+              </div>
+
+              <div class="divider"></div>
+              <div class="slbl">نتائج الحسابات</div>
+              <div class="g2">
+                <div class="mc" style="padding:10px 13px;">
+                  <div class="mc-label">BMI</div>
+                  <div class="mc-value" id="res-bmi" style="font-size:17px;color:var(--blue)">—</div>
+                  <div class="mc-unit">كجم/م²</div>
+                </div>
+                <div class="mc" style="padding:10px 13px;">
+                  <div class="mc-label">الوزن المثالي</div>
+                  <div class="mc-value" id="res-ibw" style="font-size:17px;color:var(--teal)">—</div>
+                  <div class="mc-unit">كجم</div>
+                </div>
+                <div class="mc" style="padding:10px 13px;">
+                  <div class="mc-label">الوزن المتوقع للعمر</div>
+                  <div class="mc-value" id="res-efw" style="font-size:17px;color:var(--green)">—</div>
+                  <div class="mc-unit">كجم</div>
+                </div>
+                <div class="mc" style="padding:10px 13px;">
+                  <div class="mc-label">تغيير الوزن</div>
+                  <div class="mc-value" id="res-delta" style="font-size:17px;color:var(--amber)">—</div>
+                  <div class="mc-unit">كجم</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes & Save -->
+        <div class="card">
+          <div class="card-header"><span class="card-icon">📝</span><span class="card-title">توصيات وملاحظات الأخصائي</span></div>
+          <div class="card-body">
+            <textarea id="p-notes" placeholder="اكتب توصياتك وخطة التدخل الغذائي هنا..." rows="4"></textarea>
+            <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
+              <button class="btn btn-success" onclick="saveFollowup()">💾 حفظ هذه الزيارة</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /page-patient -->
+
+
+      <!-- ══════════ PAGE: LAB ══════════ -->
+      <div class="page" id="page-lab">
+        <div class="patient-header" style="padding:11px 16px;">
+          <div class="pat-avatar" style="width:38px;height:38px;font-size:18px;">🔬</div>
+          <div class="pat-info">
+            <div style="font-size:14px;font-weight:600;" id="lab-patient-name">لا يوجد مريض محدد</div>
+            <div class="pat-meta">
+              <div class="meta-chip">الفئة العمرية: <strong id="lab-age-group">—</strong></div>
+              <div class="meta-chip">العمر: <strong id="lab-age">—</strong> شهر</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--txt-2);text-align:left;">القيم المرجعية<br>معدّلة تلقائياً</div>
+        </div>
+
+        <div class="g4" id="lab-summary">
+          <div class="mc"><div class="mc-label">🟢 طبيعي</div><div class="mc-value" id="lab-ok" style="color:var(--green)">0</div><div class="mc-unit">تحليل</div></div>
+          <div class="mc"><div class="mc-label">🔴 أقل</div><div class="mc-value" id="lab-low" style="color:var(--red)">0</div><div class="mc-unit">تحليل</div></div>
+          <div class="mc"><div class="mc-label">🟠 أعلى</div><div class="mc-value" id="lab-high" style="color:var(--amber)">0</div><div class="mc-unit">تحليل</div></div>
+          <div class="mc"><div class="mc-label">📋 مُدخل</div><div class="mc-value" id="lab-total" style="color:var(--blue)">0</div><div class="mc-unit">من 35</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🧪</span>
+            <span class="card-title">نتائج التحاليل</span>
+            <div class="tabs" style="margin-right:auto;">
+              <button class="tab active" onclick="filterLab('all',this)">الكل</button>
+              <button class="tab" onclick="filterLab('low',this)">🔴</button>
+              <button class="tab" onclick="filterLab('high',this)">🟠</button>
+              <button class="tab" onclick="filterLab('ok',this)">🟢</button>
+            </div>
+          </div>
+          <div class="lab-table-wrap" style="overflow-x:auto;">
+            <table class="lab-table">
+              <thead>
+                <tr>
+                  <th>الفحص</th>
+                  <th>النتيجة</th>
+                  <th>الوحدة</th>
+                  <th>Min</th>
+                  <th>Max</th>
+                  <th>التقييم</th>
+                </tr>
+              </thead>
+              <tbody id="lab-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /page-lab -->
+
+
+      <!-- ══════════ PAGE: FOLLOW-UP ══════════ -->
+      <div class="page" id="page-followup">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">📈</span>
+            <span class="card-title">سجل جلسات المتابعة</span>
+            <button class="btn btn-primary btn-sm" style="margin-right:auto;" onclick="showPage('patient',null)">
+              ➕ زيارة جديدة
+            </button>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="lab-table" id="followup-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>التاريخ</th>
+                  <th>العمر</th>
+                  <th>الوزن</th>
+                  <th>الطول</th>
+                  <th>BMI</th>
+                  <th>W/H%</th>
+                  <th>H/A%</th>
+                  <th>السعرات</th>
+                  <th>ملاحظات</th>
+                </tr>
+              </thead>
+              <tbody id="followup-tbody">
+                <tr><td colspan="10" style="text-align:center;color:var(--txt-2);padding:30px;">
+                  لا توجد جلسات مسجلة
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><span class="card-icon">📉</span><span class="card-title">منحنى الوزن عبر الزيارات</span></div>
+          <div class="card-body"><canvas id="weight-chart" height="130" style="width:100%;"></canvas></div>
+        </div>
+      </div><!-- /page-followup -->
+
+
+      <!-- ══════════ PAGE: NUTRITION ══════════ -->
+      <div class="page" id="page-nutrition">
+        <div class="g2">
+          <div class="card">
+            <div class="card-header"><span class="card-icon">⚡</span><span class="card-title">السعرات الحرارية</span></div>
+            <div class="card-body" id="cal-details"><div style="color:var(--txt-2);text-align:center;padding:20px;">أدخل البيانات أولاً</div></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-icon">🧬</span><span class="card-title">الكبروغذيات</span></div>
+            <div class="card-body" id="macro-details"><div style="color:var(--txt-2);text-align:center;padding:20px;">أدخل البيانات أولاً</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-icon">💊</span><span class="card-title">الفيتامينات والمعادن الموصى بها</span></div>
+          <div class="card-body" id="micro-details"><div style="color:var(--txt-2);text-align:center;padding:20px;">أدخل البيانات أولاً</div></div>
+        </div>
+      </div><!-- /page-nutrition -->
+
+
+      <!-- ══════════ PAGE: GROWTH CHARTS ══════════ -->
+      <div class="page" id="page-growth">
+        <div class="g2">
+          <div class="card">
+            <div class="card-header"><span class="card-icon">📊</span><span class="card-title">الوزن للعمر (WHO)</span></div>
+            <div class="card-body"><canvas id="who-weight-chart" height="180" style="width:100%;"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-icon">📏</span><span class="card-title">الطول للعمر (WHO)</span></div>
+            <div class="card-body"><canvas id="who-height-chart" height="180" style="width:100%;"></canvas></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-icon">📉</span><span class="card-title">BMI للعمر</span></div>
+          <div class="card-body"><canvas id="bmi-chart" height="130" style="width:100%;"></canvas></div>
+        </div>
+      </div><!-- /page-growth -->
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- Bottom Nav (Mobile) -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bn-btn active" onclick="showPage('dashboard',this)" data-page="dashboard">
+    <span class="bni">📊</span><span>الرئيسية</span>
+  </button>
+  <button class="bn-btn" onclick="showPage('patient',this)" data-page="patient">
+    <span class="bni">👶</span><span>الطفل</span>
+  </button>
+  <button class="bn-btn" onclick="showPage('lab',this)" data-page="lab">
+    <span class="bni">🔬</span><span>التحاليل</span>
+  </button>
+  <button class="bn-btn" onclick="showPage('followup',this)" data-page="followup">
+    <span class="bni">📈</span><span>المتابعة</span>
+  </button>
+  <button class="bn-btn" onclick="showPage('growth',this)" data-page="growth">
+    <span class="bni">📉</span><span>النمو</span>
+  </button>
+</nav>
+
+
+<!-- ══════════════════════════════════════════════════════════════
+     JAVASCRIPT ENGINE
+══════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────
+const state = {
+  // Current child document
+  childId: null,
+  childData: null,      // { name, guardian, dob, gender, phone, notes, diagnosis }
+  followups: [],        // array from Firestore
+
+  // Current visit (unsaved)
+  ageMonths: 0,
+  weight: 0, height: 0, prevWeight: 0,
+  activity: 1.375,
+  bmi: 0, ibw: 0, efw: 0, efh: 0,
+  calories: 0, protein: 0, carbs: 0, fat: 0, fluids: 0,
+  labResults: {},
+
+  fbReady: false,
+};
+
+// ── WHO Reference Data ────────────────────────────────────────
+const WHO_WFA_BOYS  = [[0,3.3,2.1,4.8],[1,4.5,2.9,6.3],[2,5.6,3.8,7.5],[3,6.4,4.4,8.5],[4,7.0,4.9,9.2],[5,7.5,5.3,9.9],[6,7.9,5.7,10.4],[9,9.2,6.7,12.0],[12,10.2,7.5,13.1],[15,11.0,8.1,14.2],[18,11.7,8.7,15.1],[21,12.3,9.2,15.9],[24,12.9,9.7,16.6],[30,14.1,10.7,18.0],[36,15.3,11.6,19.4],[42,16.3,12.5,20.7],[48,17.3,13.3,22.0],[54,18.4,14.1,23.3],[60,19.4,14.9,24.5]];
+const WHO_WFA_GIRLS = [[0,3.2,2.0,4.6],[1,4.2,2.7,5.8],[2,5.1,3.4,7.0],[3,5.8,3.9,7.8],[4,6.4,4.4,8.6],[5,6.9,4.8,9.2],[6,7.3,5.1,9.8],[9,8.6,6.0,11.4],[12,9.6,7.0,12.5],[15,10.4,7.6,13.5],[18,11.1,8.2,14.4],[21,11.7,8.7,15.2],[24,12.2,9.1,15.9],[30,13.3,10.0,17.2],[36,14.3,10.8,18.5],[42,15.3,11.5,19.7],[48,16.3,12.2,20.9],[54,17.2,12.9,22.1],[60,18.2,13.7,23.2]];
+const WHO_HFA_BOYS  = [[0,49.9,46.1,53.7],[3,61.4,57.3,65.5],[6,67.6,63.3,71.9],[9,72.0,67.5,76.5],[12,75.7,71.0,80.5],[18,82.3,77.2,87.7],[24,87.8,82.3,93.5],[30,92.7,86.8,98.7],[36,96.1,89.7,102.6],[42,99.9,93.0,106.8],[48,103.3,96.1,110.6],[54,106.7,99.0,114.4],[60,110.0,101.7,118.1]];
+const WHO_HFA_GIRLS = [[0,49.1,45.4,52.9],[3,59.8,55.6,64.0],[6,65.7,61.2,70.2],[9,70.1,65.3,75.0],[12,74.0,68.9,79.2],[18,80.7,75.2,86.3],[24,86.4,80.5,92.2],[30,91.4,85.1,97.7],[36,95.1,88.3,101.9],[42,98.9,91.7,106.2],[48,102.7,95.0,110.3],[54,106.2,98.1,114.2],[60,109.4,101.1,117.6]];
+
+// ── Lab Tests ─────────────────────────────────────────────────
+const LAB_TESTS = [
+  {cat:'🩸 صورة الدم الكاملة (CBC)', items:[
+    {name:'الهيموجلوبين Hgb',      unit:'g/dL',   r:[14,24, 10.5,13.5, 11,14,   11.5,14.5, 12,17]},
+    {name:'الهيماتوكريت Hct',      unit:'%',      r:[44,70, 30,40,    33,40,   34,42,     36,49]},
+    {name:'كريات حمراء RBC',       unit:'10⁶/µL', r:[4.0,6.6,3.7,5.3, 3.9,5.0, 4.0,5.3,  4.0,5.9]},
+    {name:'MCV',                   unit:'fL',     r:[96,108,72,86,    70,86,   76,90,     78,95]},
+    {name:'كريات بيضاء WBC',       unit:'10³/µL', r:[9,30,  6,18,    5.5,15.5,4.5,13.5, 4.5,11.5]},
+    {name:'الصفائح PLT',           unit:'10³/µL', r:[150,450,150,400,150,400,150,400,   150,400]},
+  ]},
+  {cat:'🔩 مؤشرات الحديد', items:[
+    {name:'الفيريتين Ferritin',    unit:'ng/mL',  r:[25,200,6,24,     6,24,    7,30,     10,200]},
+    {name:'تشبع الترانسفيرين',    unit:'%',      r:[20,55, 20,50,   20,50,   20,50,    20,50]},
+    {name:'TIBC',                  unit:'µg/dL',  r:[100,400,250,400,250,400,250,400,  250,370]},
+  ]},
+  {cat:'🥗 مؤشرات التغذية', items:[
+    {name:'ألبومين Albumin',       unit:'g/dL',   r:[2.8,4.4,3.4,4.2, 3.5,5.0, 3.5,5.0, 3.5,5.0]},
+    {name:'بريألبومين Prealbumin', unit:'mg/dL',  r:[7,24,  10,30,   14,30,   16,35,   20,40]},
+    {name:'البروتين الكلي',        unit:'g/dL',   r:[4.6,7.0,5.0,7.5, 5.5,7.5, 6.0,8.0, 6.0,8.0]},
+    {name:'فيتامين د 25-OH',      unit:'ng/mL',  r:[0,999, 20,100,  20,100,  20,100,  20,100]},
+    {name:'زنك Zinc',              unit:'µg/dL',  r:[80,120,65,110,  65,110,  70,110,  70,120]},
+    {name:'كالسيوم Calcium',       unit:'mg/dL',  r:[7.0,12.0,8.8,11,8.5,10.5,8.5,10.5,8.5,10.5]},
+    {name:'فوسفور Phosphorus',     unit:'mg/dL',  r:[3.7,8.1,4.5,6.5,3.8,6.5, 3.7,5.6, 2.9,5.4]},
+    {name:'ماغنيسيوم Magnesium',   unit:'mg/dL',  r:[1.5,2.3,1.5,2.3,1.5,2.3, 1.5,2.3, 1.5,2.5]},
+  ]},
+  {cat:'🫀 وظائف الكبد', items:[
+    {name:'ALT (SGPT)',            unit:'U/L',    r:[5,45,  7,45,    7,45,    7,45,    7,40]},
+    {name:'AST (SGOT)',            unit:'U/L',    r:[20,65, 15,60,   15,55,   15,45,   10,40]},
+    {name:'الفوسفاتاز ALP',       unit:'U/L',    r:[70,370,70,370,  70,370,  70,370,  50,390]},
+    {name:'بيليروبين كلي',         unit:'mg/dL',  r:[0.3,12,0.1,1.0, 0.1,1.0, 0.1,1.0, 0.1,1.2]},
+  ]},
+  {cat:'🫘 وظائف الكلى', items:[
+    {name:'يوريا BUN',             unit:'mg/dL',  r:[3,12,  5,18,   5,18,    7,20,    7,20]},
+    {name:'كرياتينين Creatinine',  unit:'mg/dL',  r:[0.3,1.0,0.1,0.4,0.2,0.5,0.3,0.7, 0.4,1.2]},
+  ]},
+  {cat:'🦋 الغدة الدرقية', items:[
+    {name:'TSH',                   unit:'mIU/L',  r:[0.7,15.2,0.8,8.2,0.7,6.0,0.6,5.0,0.5,4.5]},
+    {name:'T4 الحر Free T4',       unit:'ng/dL',  r:[0.8,2.2,0.8,1.9,0.8,1.8,0.8,1.8,0.8,1.8]},
+  ]},
+  {cat:'🍬 سكر الدم', items:[
+    {name:'سكر صائم Glucose',      unit:'mg/dL',  r:[40,100,60,100,  70,100,  70,100,  70,100]},
+    {name:'HbA1c',                 unit:'%',      r:[0,99,  0,99,   0,5.7,   0,5.7,   0,5.7]},
+  ]},
+  {cat:'💉 دهون الدم (Lipid Profile)', items:[
+    {name:'كوليسترول كلي',         unit:'mg/dL',  r:[0,999, 0,999,  0,170,   0,170,   0,200]},
+    {name:'LDL',                   unit:'mg/dL',  r:[0,999, 0,999,  0,110,   0,110,   0,130]},
+    {name:'HDL',                   unit:'mg/dL',  r:[0,999, 0,999,  45,999,  45,999,  45,999]},
+    {name:'ثلاثي الجليسريد TG',   unit:'mg/dL',  r:[0,999, 0,999,  0,100,   0,130,   0,150]},
+  ]},
+];
+
+// ══════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════
+function getAgeGroup(m) {
+  if (m < 1)   return {idx:0, label:'حديث الولادة (0-1 شهر)'};
+  if (m < 12)  return {idx:1, label:'رضيع (1-12 شهر)'};
+  if (m < 60)  return {idx:2, label:'طفل صغير (1-5 سنوات)'};
+  if (m < 144) return {idx:3, label:'طفل (5-12 سنة)'};
+  return {idx:4, label:'مراهق (12-18 سنة)'};
+}
+
+function getRefRange(r, m) {
+  const {idx} = getAgeGroup(m);
+  return [r[idx*2], r[idx*2+1]];
+}
+
+function interpolateWHO(data, months) {
+  if (months <= data[0][0]) return {med:data[0][1],lo:data[0][2],hi:data[0][3]};
+  const last = data[data.length-1];
+  if (months >= last[0]) return {med:last[1],lo:last[2],hi:last[3]};
+  for (let i=1;i<data.length;i++) {
+    if (months <= data[i][0]) {
+      const d0=data[i-1], d1=data[i], t=(months-d0[0])/(d1[0]-d0[0]);
+      return {med:d0[1]+t*(d1[1]-d0[1]), lo:d0[2]+t*(d1[2]-d0[2]), hi:d0[3]+t*(d1[3]-d0[3])};
+    }
+  }
+}
+
+function fmt(n, dec=1) {
+  if (n === null || n === undefined || (n !== 0 && !n)) return '—';
+  return Number(n).toFixed(dec);
+}
+
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function calcAgeFromDOB(dob) {
+  if (!dob) return 0;
+  const d = new Date(dob), now = new Date();
+  let m = (now.getFullYear()-d.getFullYear())*12 + (now.getMonth()-d.getMonth());
+  if (now.getDate() < d.getDate()) m--;
+  return Math.max(0, m);
+}
+
+function showToast(msg, duration=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+// ══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════════════
+const pageTitles = {
+  dashboard: 'لوحة المتابعة',
+  patient:   'بيانات الطفل',
+  lab:       'التحاليل المخبرية',
+  followup:  'سجل المتابعة',
+  nutrition: 'الاحتياجات الغذائية',
+  growth:    'منحنيات النمو WHO',
+};
+
+function showPage(id, triggerEl) {
+  // Pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+
+  // Sidebar nav
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const sidebarBtn = document.querySelector(`.sidebar .nav-btn[onclick*="'${id}'"]`);
+  if (sidebarBtn) sidebarBtn.classList.add('active');
+
+  // Bottom nav
+  document.querySelectorAll('.bn-btn').forEach(b => b.classList.remove('active'));
+  const bnBtn = document.querySelector(`.bn-btn[data-page="${id}"]`);
+  if (bnBtn) bnBtn.classList.add('active');
+
+  // Topbar title
+  document.getElementById('topbar-title').innerHTML =
+    `${pageTitles[id]} <span>/ نظام التغذية للأطفال</span>`;
+
+  // Lazy renders
+  if (id === 'growth')  setTimeout(renderGrowthCharts, 50);
+  if (id === 'followup') setTimeout(renderWeightChart, 50);
+  if (id === 'lab') renderLabTable();
+
+  closeSidebar();
+}
+
+// ══════════════════════════════════════════════════════════════
+// SIDEBAR / DRAWER
+// ══════════════════════════════════════════════════════════════
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('drawerOverlay');
+  sb.classList.toggle('open');
+  ov.classList.toggle('open');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODAL
+// ══════════════════════════════════════════════════════════════
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+function openNewChildModal() {
+  closeModal('searchModal');
+  // Pre-fill from search inputs
+  document.getElementById('nc-name').value     = document.getElementById('s-name').value || '';
+  document.getElementById('nc-guardian').value = document.getElementById('s-guardian').value || '';
+  document.getElementById('nc-dob').value      = document.getElementById('s-dob').value || '';
+  openModal('newChildModal');
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE – SEARCH CHILDREN
+// ══════════════════════════════════════════════════════════════
+async function searchChildren() {
+  if (!state.fbReady) { showToast('⚠️ Firebase لم يتصل بعد'); return; }
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const nameQ     = (document.getElementById('s-name').value     || '').trim().toLowerCase();
+  const guardianQ = (document.getElementById('s-guardian').value || '').trim().toLowerCase();
+  const dobQ      = (document.getElementById('s-dob').value      || '').trim();
+  const phoneQ    = (document.getElementById('s-phone').value    || '').trim();
+
+  const area = document.getElementById('search-results-area');
+  area.innerHTML = '';
+
+  try {
+    const {getDocs, collection} = window._fb;
+    const snap = await getDocs(collection(window._db, 'children'));
+    const results = [];
+
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      const n = (d.name      || '').toLowerCase();
+      const g = (d.guardian  || '').toLowerCase();
+      const dob = d.dob || '';
+      const ph  = d.phone || '';
+
+      const matchName     = !nameQ     || n.includes(nameQ);
+      const matchGuardian = !guardianQ || g.includes(guardianQ);
+      const matchDOB      = !dobQ      || dob === dobQ;
+      const matchPhone    = !phoneQ    || ph.includes(phoneQ);
+
+      if (matchName && matchGuardian && matchDOB && matchPhone) {
+        results.push({ id: docSnap.id, ...d });
+      }
+    });
+
+    if (!results.length) {
+      area.innerHTML = `
+        <div class="empty-state" style="padding:20px 0;">
+          <div class="es-icon" style="font-size:32px;">🔍</div>
+          <p>لم يُعثر على طفل بهذه البيانات</p>
+          <p style="margin-top:6px;font-size:12px;color:var(--txt-3);">يمكنك إنشاء ملف جديد أدناه</p>
+        </div>`;
+    } else {
+      area.innerHTML = `<div style="font-size:12px;color:var(--txt-2);margin-bottom:4px;">
+        وُجد ${results.length} نتيجة – انقر لفتح الملف</div>`;
+      results.forEach(child => {
+        const age = calcAgeFromDOB(child.dob);
+        const el = document.createElement('div');
+        el.className = 'search-result-item';
+        el.innerHTML = `
+          <div>
+            <div class="sri-name">👶 ${child.name}</div>
+            <div class="sri-meta">ولي الأمر: ${child.guardian} · ${age} شهر · ${child.gender==='M'?'ذكر':'أنثى'}${child.phone?' · 📞 '+child.phone:''}</div>
+          </div>
+          <span class="pill pill-blue" style="white-space:nowrap;">فتح الملف</span>`;
+        el.onclick = () => loadChild(child.id, child);
+        area.appendChild(el);
+      });
+      // remove duplicate loop
+      const dummy = null;
+    }
+  } catch(e) {
+    area.innerHTML = `<div class="alert alert-danger">خطأ: ${e.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>🔍</span> بحث';
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE – CREATE CHILD
+// ══════════════════════════════════════════════════════════════
+async function createNewChild() {
+  if (!state.fbReady) { showToast('⚠️ Firebase لم يتصل بعد'); return; }
+  const name     = document.getElementById('nc-name').value.trim();
+  const guardian = document.getElementById('nc-guardian').value.trim();
+  const dob      = document.getElementById('nc-dob').value;
+  const gender   = document.getElementById('nc-gender').value;
+
+  if (!name || !guardian || !dob || !gender) {
+    showToast('⚠️ أكمل البيانات المطلوبة (*)'); return;
+  }
+
+  const btn = document.getElementById('createBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const childData = {
+    name, guardian, dob, gender,
+    phone:     document.getElementById('nc-phone').value.trim() || '',
+    diagnosis: document.getElementById('nc-diagnosis').value.trim() || '',
+    notes:     document.getElementById('nc-notes').value.trim() || '',
+    createdAt: window._fb.serverTimestamp(),
+  };
+
+  try {
+    const {addDoc, collection} = window._fb;
+    const docRef = await addDoc(collection(window._db, 'children'), childData);
+    closeModal('newChildModal');
+    loadChild(docRef.id, childData);
+    showToast('✅ تم إنشاء الملف بنجاح');
+  } catch(e) {
+    showToast('❌ خطأ: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>💾</span> حفظ وفتح الملف';
+}
+
+// ══════════════════════════════════════════════════════════════
+// LOAD CHILD (open file)
+// ══════════════════════════════════════════════════════════════
+async function loadChild(childId, childData) {
+  closeModal('searchModal');
+  state.childId   = childId;
+  state.childData = childData;
+  state.labResults = {};
+
+  // Calculate age
+  state.ageMonths = calcAgeFromDOB(childData.dob);
+
+  // Fill form fields (read-only)
+  document.getElementById('p-name').value     = childData.name     || '';
+  document.getElementById('p-guardian').value = childData.guardian || '';
+  document.getElementById('p-dob').value      = childData.dob      || '';
+  document.getElementById('p-gender-txt').value = childData.gender === 'M' ? 'ذكر' : 'أنثى';
+  const m = state.ageMonths;
+  const yrs = Math.floor(m/12), mos = m%12;
+  document.getElementById('p-age-text').value = `${m} شهر (${yrs} سنة و${mos} شهر)`;
+  document.getElementById('p-visit').value = today();
+  document.getElementById('p-diagnosis').value = childData.diagnosis || '';
+
+  // Clear visit measurements
+  ['p-weight','p-height','p-head','p-waist','p-hip','p-prev-weight'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('p-notes').value = '';
+  document.getElementById('p-meds').value  = childData.notes || '';
+
+  // Reset calcs
+  state.weight = state.height = state.prevWeight = 0;
+  state.bmi = state.ibw = state.efw = state.efh = 0;
+  state.calories = state.protein = state.carbs = state.fat = state.fluids = 0;
+
+  // Load followups from Firestore
+  await loadFollowups(childId);
+
+  // Show dashboard
+  document.getElementById('no-patient-state').style.display = 'none';
+  document.getElementById('patient-dashboard').style.display = 'flex';
+  document.getElementById('patient-info-bar').style.display  = 'flex';
+  document.getElementById('saveFollowupBtn').style.display   = 'flex';
+
+  // Update info bar
+  document.getElementById('pi-name').textContent     = childData.name;
+  document.getElementById('pi-guardian').textContent = childData.guardian;
+  document.getElementById('pi-age').textContent      = m;
+  document.getElementById('pi-visits-chip').textContent = `${state.followups.length} زيارة سابقة`;
+  if (childData.phone) {
+    document.getElementById('pi-phone').textContent = childData.phone;
+    document.getElementById('pi-phone-chip').style.display = '';
+  } else {
+    document.getElementById('pi-phone-chip').style.display = 'none';
+  }
+
+  // Update dashboard header
+  document.getElementById('dash-name').textContent = childData.name;
+  document.getElementById('dash-age').textContent  = m;
+
+  renderLabTable();
+  renderFollowupTable();
+  showPage('patient', null);
+  showToast(`✅ تم فتح ملف: ${childData.name}`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE – LOAD FOLLOWUPS
+// ══════════════════════════════════════════════════════════════
+async function loadFollowups(childId) {
+  if (!state.fbReady) return;
+  try {
+    const {getDocs, collection, query, where, orderBy} = window._fb;
+    const q = query(
+      collection(window._db, 'followups'),
+      where('childId', '==', childId),
+      orderBy('date', 'asc')
+    );
+    const snap = await getDocs(q);
+    state.followups = [];
+    snap.forEach(d => state.followups.push({ followupId: d.id, ...d.data() }));
+
+    // Set prev weight from last followup
+    if (state.followups.length) {
+      const last = state.followups[state.followups.length-1];
+      document.getElementById('p-prev-weight').value = last.weight || '';
+      document.getElementById('p-prev-date').value   = last.date   || '';
+      state.prevWeight = last.weight || 0;
+    }
+  } catch(e) {
+    console.warn('loadFollowups:', e.message);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// FIREBASE – SAVE FOLLOWUP (Healthy Day)
+// ══════════════════════════════════════════════════════════════
+async function saveFollowup() {
+  if (!state.childId) { showToast('⚠️ افتح ملف طفل أولاً'); openModal('searchModal'); return; }
+  if (!state.fbReady) { showToast('⚠️ Firebase لم يتصل'); return; }
+
+  const w = parseFloat(document.getElementById('p-weight').value) || 0;
+  const h = parseFloat(document.getElementById('p-height').value) || 0;
+  if (!w && !h) { showToast('⚠️ أدخل الوزن أو الطول أولاً'); showPage('patient',null); return; }
+
+  const btn = document.getElementById('saveFollowupBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const {addDoc, collection, serverTimestamp} = window._fb;
+  const followupData = {
+    childId:    state.childId,
+    date:       document.getElementById('p-visit').value || today(),
+    age:        state.ageMonths,
+    weight:     w,
+    height:     h,
+    head:       parseFloat(document.getElementById('p-head').value)  || null,
+    waist:      parseFloat(document.getElementById('p-waist').value) || null,
+    hip:        parseFloat(document.getElementById('p-hip').value)   || null,
+    bmi:        state.bmi     || null,
+    ibw:        state.ibw     || null,
+    efw:        state.efw     || null,
+    wh:         state.efw > 0 ? +(w/state.efw*100).toFixed(1) : null,
+    ha:         state.efh > 0 ? +(h/state.efh*100).toFixed(1) : null,
+    calories:   state.calories || null,
+    protein:    state.protein  || null,
+    fluids:     state.fluids   || null,
+    diagnosis:  document.getElementById('p-diagnosis').value || '',
+    feeding:    document.getElementById('p-feeding').value   || '',
+    meds:       document.getElementById('p-meds').value      || '',
+    notes:      document.getElementById('p-notes').value     || '',
+    labResults: {...state.labResults},
+    activity:   state.activity,
+    savedAt:    serverTimestamp(),
+  };
+
+  try {
+    const ref = await addDoc(collection(window._db, 'followups'), followupData);
+    state.followups.push({ followupId: ref.id, ...followupData });
+    document.getElementById('pi-visits-chip').textContent = `${state.followups.length} زيارة سابقة`;
+    renderFollowupTable();
+    renderWeightChart();
+    showToast('✅ تم حفظ الزيارة بنجاح');
+    showPage('followup', null);
+  } catch(e) {
+    showToast('❌ خطأ: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '💾 <span class="hide-xs">حفظ الزيارة</span>';
+}
+
+// ══════════════════════════════════════════════════════════════
+// CALCULATIONS
+// ══════════════════════════════════════════════════════════════
+function recalcAll() {
+  const m = state.ageMonths;
+  const g = state.childData ? state.childData.gender : '';
+  state.weight     = parseFloat(document.getElementById('p-weight').value)      || 0;
+  state.height     = parseFloat(document.getElementById('p-height').value)      || 0;
+  state.prevWeight = parseFloat(document.getElementById('p-prev-weight').value) || 0;
+  state.activity   = parseFloat(document.getElementById('p-activity').value)    || 1.375;
+  const w = state.weight, h = state.height;
+
+  // BMI
+  state.bmi = h > 0 ? w / ((h/100)**2) : 0;
+
+  // IBW
+  state.ibw = h > 100 ? (g==='F' ? (h-105)*0.9 : (h-100)*0.9) :
+              m > 0   ? (1 + m*0.18) : 0;
+
+  // WHO expected
+  const whoW = g==='M' ? interpolateWHO(WHO_WFA_BOYS,m) : interpolateWHO(WHO_WFA_GIRLS,m);
+  const whoH = g==='M' ? interpolateWHO(WHO_HFA_BOYS,m) : interpolateWHO(WHO_HFA_GIRLS,m);
+  state.efw = whoW ? whoW.med : 0;
+  state.efh = whoH ? whoH.med : 0;
+
+  // Schofield BMR
+  let bmr = 0;
+  if (w > 0 && m > 0) {
+    if (g==='M') {
+      if (m<12)  bmr = 0.167*w*10+1517.4;
+      else if (m<36) bmr = 19.59*w+130.3;
+      else if (m<60) bmr = 16.97*w+371.2;
+      else if (m<120)bmr = 15.057*w+690.2;
+      else           bmr = 17.686*w+658.2;
+    } else {
+      if (m<12)  bmr = 16.252*w+1023.2;
+      else if (m<36) bmr = 16.969*w+371.2;
+      else if (m<60) bmr = 15.501*w+674.5;
+      else if (m<120)bmr = 13.384*w+692.8;
+      else           bmr = 13.384*w+692.8;
+    }
+  }
+  state.calories = Math.round(bmr * state.activity);
+
+  // Protein
+  const ibwRef = state.ibw > 0 ? state.ibw : w;
+  const protF  = m<=12?2.2:m<=36?1.8:m<=60?1.5:m<=120?1.2:1.0;
+  state.protein = ibwRef * protF;
+  state.carbs   = state.calories * 0.50 / 4;
+  state.fat     = state.calories * 0.30 / 9;
+
+  // Fluids Holliday-Segar
+  if (w <= 10)      state.fluids = w * 100;
+  else if (w <= 20) state.fluids = 1000 + (w-10)*50;
+  else              state.fluids = 1500 + (w-20)*20;
+
+  updateDashboard(whoW, whoH);
+  updatePatientResults();
+  updateNutritionPage();
+  updateLabHeader();
+}
+
+// ── Dashboard update ──────────────────────────────────────────
+function updateDashboard(whoW, whoH) {
+  const {weight, height, ageMonths, bmi, ibw, efw, efh, calories, protein, fluids, prevWeight} = state;
+
+  setTxt('dash-weight', weight ? fmt(weight) : '—');
+  setTxt('dash-height', height ? fmt(height) : '—');
+  setTxt('dash-bmi',    bmi    ? fmt(bmi)    : '—');
+  setTxt('m-ibw',       ibw    ? fmt(ibw)    : '—');
+  setTxt('m-cal',       calories || '—');
+  setTxt('m-prot',      protein  ? fmt(protein) : '—');
+  setTxt('m-fluid',     fluids   ? Math.round(fluids) : '—');
+
+  if (weight && ibw) setStyle('bar-ibw', 'width', Math.min(100, weight/ibw*100)+'%');
+
+  const wh = (efw > 0 && weight > 0) ? (weight/efw*100) : 0;
+  const ha = (efh > 0 && height > 0) ? (height/efh*100) : 0;
+  const wa = wh;
+
+  setTxt('m-wh', wh ? fmt(wh)+'%' : '—');
+  setTxt('m-ha', ha ? fmt(ha)+'%' : '—');
+  setTxt('m-wa', wa ? fmt(wa)+'%' : '—');
+  setTxt('m-bmi2', bmi ? fmt(bmi) : '—');
+
+  const classify = (val, th, lb, cls) => {
+    for (let i=0;i<th.length;i++) if (val < th[i]) return {label:lb[i],cls:cls[i]};
+    return {label:lb[lb.length-1],cls:cls[cls.length-1]};
+  };
+
+  if (wh) setPill('wh-class', classify(wh,[70,80,90,999],
+    ['Severe Wasting 🚨','Moderate Wasting ⚠️','Mild Wasting','طبيعي ✅'],
+    ['pill-red','pill-amber','pill-amber','pill-green']));
+  if (ha) setPill('ha-class', classify(ha,[85,90,95,999],
+    ['Severe Stunting 🚨','Moderate Stunting ⚠️','Mild Stunting','طبيعي ✅'],
+    ['pill-red','pill-amber','pill-amber','pill-green']));
+  if (bmi) {
+    const c = classify(bmi,[14,16,18.5,25,30,999],
+      ['نقص حاد ⚠️','نقص','أقل من المثالي','طبيعي ✅','زيادة وزن','سمنة'],
+      ['pill-red','pill-amber','pill-amber','pill-green','pill-amber','pill-red']);
+    setPill('bmi-class', c);
+    const sb = document.getElementById('dash-status');
+    sb.textContent = c.label;
+    sb.className = 'status-badge ' + (c.cls.includes('green')?'s-ok':c.cls.includes('red')?'s-danger':'s-warn');
+    document.getElementById('pi-status').textContent = c.label;
+    document.getElementById('pi-status').className   = 'status-badge ' + (c.cls.includes('green')?'s-ok':c.cls.includes('red')?'s-danger':'s-warn');
+  }
+
+  // Alerts
+  const alerts = [];
+  if (wh < 70)  alerts.push({t:'danger',  msg:'Severe Wasting – تدخل غذائي فوري مطلوب'});
+  else if (wh < 80) alerts.push({t:'warning', msg:'Moderate Wasting – تعديل الخطة الغذائية'});
+  if (ha < 85)  alerts.push({t:'danger',  msg:'Severe Stunting – تأخر نمو شديد في الطول'});
+  if (bmi > 25) alerts.push({t:'warning', msg:'زيادة في الوزن – مراجعة السعرات'});
+  if (prevWeight && weight && weight < prevWeight)
+    alerts.push({t:'warning', msg:`انخفاض الوزن: ${fmt(prevWeight-weight)} كجم`});
+  if (!alerts.length && calories > 0)
+    alerts.push({t:'info', msg:'لا توجد تنبيهات – المريض ضمن المعدل الطبيعي ✅'});
+
+  const box = document.getElementById('alerts-box');
+  if (alerts.length) box.innerHTML = alerts.map(a =>
+    `<div class="alert alert-${a.t}"><span>${a.t==='danger'?'🚨':a.t==='warning'?'⚠️':'ℹ️'}</span><span>${a.msg}</span></div>`
+  ).join('');
+
+  // Macros
+  if (calories) {
+    document.getElementById('macro-grid').style.gridTemplateColumns = 'repeat(3,1fr)';
+    document.getElementById('macro-grid').innerHTML = `
+      <div class="mc" style="text-align:center;">
+        <div style="font-size:26px;font-weight:700;color:var(--blue);font-family:var(--mono);">${fmt(state.protein)}</div>
+        <div style="font-size:12px;color:var(--txt-2);margin-top:4px;">🥩 بروتين</div>
+        <div style="font-size:11px;color:var(--txt-3);">جرام/يوم · ${Math.round(state.protein*4)} kcal</div>
+        <div class="mc-bar" style="margin-top:6px;"><div class="mc-bar-fill bar-blue" style="width:20%"></div></div>
+      </div>
+      <div class="mc" style="text-align:center;">
+        <div style="font-size:26px;font-weight:700;color:var(--green);font-family:var(--mono);">${fmt(state.carbs)}</div>
+        <div style="font-size:12px;color:var(--txt-2);margin-top:4px;">🍞 كربوهيدرات</div>
+        <div style="font-size:11px;color:var(--txt-3);">جرام/يوم · 50% من السعرات</div>
+        <div class="mc-bar" style="margin-top:6px;"><div class="mc-bar-fill bar-green" style="width:50%"></div></div>
+      </div>
+      <div class="mc" style="text-align:center;">
+        <div style="font-size:26px;font-weight:700;color:var(--amber);font-family:var(--mono);">${fmt(state.fat)}</div>
+        <div style="font-size:12px;color:var(--txt-2);margin-top:4px;">🫒 دهون</div>
+        <div style="font-size:11px;color:var(--txt-3);">جرام/يوم · 30% من السعرات</div>
+        <div class="mc-bar" style="margin-top:6px;"><div class="mc-bar-fill bar-amber" style="width:30%"></div></div>
+      </div>
+    `;
+  }
+}
+
+function setTxt(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function setStyle(id, prop, val) { const el=document.getElementById(id); if(el) el.style[prop]=val; }
+function setPill(id, c) { const el=document.getElementById(id); if(el){el.textContent=c.label;el.className='pill '+c.cls;} }
+
+function updatePatientResults() {
+  const {bmi, ibw, efw, weight, prevWeight} = state;
+  setTxt('res-bmi',   bmi   ? fmt(bmi)   : '—');
+  setTxt('res-ibw',   ibw   ? fmt(ibw)   : '—');
+  setTxt('res-efw',   efw   ? fmt(efw)   : '—');
+  setTxt('res-delta', (weight && prevWeight) ? fmt(weight - prevWeight) : '—');
+}
+
+function updateLabHeader() {
+  const m = state.ageMonths;
+  const el1 = document.getElementById('lab-patient-name');
+  const el2 = document.getElementById('lab-age');
+  const el3 = document.getElementById('lab-age-group');
+  if (state.childData) {
+    if(el1) el1.textContent = state.childData.name;
+    if(el2) el2.textContent = m;
+    if(el3) el3.textContent = getAgeGroup(m).label;
+  }
+}
+
+function updateNutritionPage() {
+  const {calories, protein, carbs, fat, fluids, ageMonths} = state;
+  if (!calories) return;
+
+  const iron    = ageMonths<7?0.27:ageMonths<12?11:ageMonths<36?7:ageMonths<60?10:ageMonths<120?8:15;
+  const calcium = ageMonths<7?200:ageMonths<12?260:ageMonths<36?700:ageMonths<60?1000:ageMonths<216?1300:1000;
+  const vitD    = ageMonths<12?400:600;
+  const zinc    = ageMonths<7?2:ageMonths<12?3:ageMonths<60?3:ageMonths<120?5:9;
+
+  document.getElementById('cal-details').innerHTML = `
+    <div class="g2" style="margin-bottom:10px;">
+      <div class="mc"><div class="mc-label">سعرات Schofield</div>
+        <div class="mc-value" style="color:var(--blue);">${calories}</div>
+        <div class="mc-unit">كيلو كالوري/يوم</div></div>
+      <div class="mc"><div class="mc-label">سعرات/كجم IBW</div>
+        <div class="mc-value" style="color:var(--teal);">${state.ibw ? fmt(calories/state.ibw,1) : '—'}</div>
+        <div class="mc-unit">kcal/kg</div></div>
+    </div>
+    <div style="padding:10px 12px;background:var(--bg-input);border-radius:var(--r-sm);font-size:13px;color:var(--txt-2);border:1px solid var(--border);">
+      معامل النشاط: <strong style="color:var(--txt);">${state.activity}</strong>
+    </div>`;
+
+  document.getElementById('macro-details').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div class="mc" style="text-align:center;"><div class="mc-label">🥩 بروتين</div>
+        <div class="mc-value" style="color:var(--blue);font-size:20px;">${fmt(protein)}</div>
+        <div class="mc-unit">جرام/يوم</div></div>
+      <div class="mc" style="text-align:center;"><div class="mc-label">🍞 كربوهيدرات</div>
+        <div class="mc-value" style="color:var(--green);font-size:20px;">${fmt(carbs)}</div>
+        <div class="mc-unit">جرام/يوم</div></div>
+      <div class="mc" style="text-align:center;"><div class="mc-label">🫒 دهون</div>
+        <div class="mc-value" style="color:var(--amber);font-size:20px;">${fmt(fat)}</div>
+        <div class="mc-unit">جرام/يوم</div></div>
+    </div>
+    <div class="mc" style="margin-top:10px;text-align:center;">
+      <div class="mc-label">💧 السوائل – Holliday-Segar</div>
+      <div class="mc-value" style="color:var(--teal);">${Math.round(fluids)}</div>
+      <div class="mc-unit">مل/يوم (min: ${Math.round(fluids*0.75)} مل)</div>
+    </div>`;
+
+  document.getElementById('micro-details').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      ${[['⚙️ حديد',iron,'ملجم/يوم'],['🦴 كالسيوم',calcium,'ملجم/يوم'],
+         ['☀️ فيتامين د',vitD,'IU/يوم'],['🔩 زنك',zinc,'ملجم/يوم']].map(([l,v,u]) =>
+        `<div class="mc" style="text-align:center;"><div class="mc-label">${l}</div>
+           <div class="mc-value" style="font-size:20px;color:var(--teal);">${v}</div>
+           <div class="mc-unit">${u}</div></div>`).join('')}
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// LAB TABLE
+// ══════════════════════════════════════════════════════════════
+function renderLabTable() {
+  const tbody = document.getElementById('lab-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const m = state.ageMonths;
+
+  LAB_TESTS.forEach(cat => {
+    const catRow = document.createElement('tr');
+    catRow.className = 'lab-cat';
+    catRow.innerHTML = `<td colspan="6">${cat.cat}</td>`;
+    tbody.appendChild(catRow);
+
+    cat.items.forEach(item => {
+      const [lo,hi] = getRefRange(item.r, m);
+      const val = state.labResults[item.name] ?? '';
+      let cls = '', pill = `<span class="pill pill-muted">—</span>`;
+      if (val !== '') {
+        const v = parseFloat(val);
+        cls  = v < lo ? 'v-low' : v > hi ? 'v-high' : 'v-ok';
+        pill = v < lo
+          ? `<span class="pill pill-red">🔴 أقل</span>`
+          : v > hi ? `<span class="pill pill-amber">🟠 أعلى</span>`
+          : `<span class="pill pill-green">🟢 طبيعي</span>`;
+      }
+      const tr = document.createElement('tr');
+      tr.dataset.status = val === '' ? 'empty' : val < lo ? 'low' : val > hi ? 'high' : 'ok';
+      tr.innerHTML = `
+        <td style="font-weight:500;">${item.name}</td>
+        <td><input class="lab-inp ${cls}" type="number" step="0.01"
+             value="${val}" placeholder="—"
+             data-test="${encodeURIComponent(item.name)}" data-lo="${lo}" data-hi="${hi}"
+             oninput="onLabInput(this)"></td>
+        <td style="color:var(--txt-2);font-family:var(--mono);font-size:12px;">${item.unit}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--txt-3);">${fmt(lo,2)}</td>
+        <td style="font-family:var(--mono);font-size:12px;color:var(--txt-3);">${fmt(hi,2)}</td>
+        <td>${pill}</td>`;
+      tbody.appendChild(tr);
+    });
+  });
+  updateLabSummary();
+}
+
+function onLabInput(inp) {
+  const name = decodeURIComponent(inp.dataset.test);
+  const lo = parseFloat(inp.dataset.lo), hi = parseFloat(inp.dataset.hi);
+  const val = parseFloat(inp.value);
+  if (isNaN(val) || inp.value === '') {
+    delete state.labResults[name];
+    inp.className = 'lab-inp';
+    inp.closest('tr').dataset.status = 'empty';
+    inp.closest('tr').cells[5].innerHTML = '<span class="pill pill-muted">—</span>';
+  } else {
+    state.labResults[name] = val;
+    const low = val < lo, high = val > hi;
+    inp.className = 'lab-inp ' + (low?'v-low':high?'v-high':'v-ok');
+    inp.closest('tr').dataset.status = low?'low':high?'high':'ok';
+    inp.closest('tr').cells[5].innerHTML = low
+      ? `<span class="pill pill-red">🔴 (ref≥${fmt(lo,2)})</span>`
+      : high ? `<span class="pill pill-amber">🟠 (ref≤${fmt(hi,2)})</span>`
+      : `<span class="pill pill-green">🟢 طبيعي</span>`;
+  }
+  updateLabSummary();
+}
+
+function updateLabSummary() {
+  let ok=0,low=0,high=0,total=0;
+  document.querySelectorAll('#lab-tbody tr:not(.lab-cat)').forEach(tr => {
+    const s = tr.dataset.status;
+    if(s==='ok'){ok++;total++;} else if(s==='low'){low++;total++;} else if(s==='high'){high++;total++;}
+  });
+  setTxt('lab-ok',ok); setTxt('lab-low',low); setTxt('lab-high',high); setTxt('lab-total',total);
+}
+
+function filterLab(type, btn) {
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const rows = document.querySelectorAll('#lab-tbody tr:not(.lab-cat)');
+  rows.forEach(tr => { tr.style.display = (type==='all' || tr.dataset.status===type) ? '' : 'none'; });
+  document.querySelectorAll('#lab-tbody tr.lab-cat').forEach(cat => {
+    let next=cat.nextElementSibling, any=false;
+    while(next && !next.classList.contains('lab-cat')) {
+      if(next.style.display!=='none') any=true;
+      next=next.nextElementSibling;
+    }
+    cat.style.display = any ? '' : 'none';
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// FOLLOW-UP TABLE
+// ══════════════════════════════════════════════════════════════
+function renderFollowupTable() {
+  const tbody = document.getElementById('followup-tbody');
+  if (!tbody) return;
+  if (!state.followups.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--txt-2);padding:30px;">لا توجد زيارات محفوظة بعد</td></tr>';
+    return;
+  }
+  tbody.innerHTML = state.followups.map((r, i) => `
+    <tr>
+      <td style="font-family:var(--mono);color:var(--txt-2);">${i+1}</td>
+      <td style="font-family:var(--mono);">${r.date || '—'}</td>
+      <td>${r.age || '—'}</td>
+      <td><strong style="color:var(--blue);">${fmt(r.weight)}</strong></td>
+      <td>${fmt(r.height)}</td>
+      <td style="font-family:var(--mono);">${fmt(r.bmi)}</td>
+      <td>${r.wh ? fmt(r.wh)+'%' : '—'}</td>
+      <td>${r.ha ? fmt(r.ha)+'%' : '—'}</td>
+      <td>${r.calories || '—'}</td>
+      <td style="font-size:12px;color:var(--txt-2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.notes||''}">${r.notes || '—'}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+// CHARTS (pure canvas)
+// ══════════════════════════════════════════════════════════════
+function drawLineChart(canvasId, datasets, xLabels) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth * 2;
+  canvas.height = parseInt(canvas.getAttribute('height')||180) * 2;
+  ctx.scale(2,2);
+  const W=canvas.width/2, H=canvas.height/2;
+  const pad={t:20,r:20,b:35,l:45};
+  const cW=W-pad.l-pad.r, cH=H-pad.t-pad.b;
+
+  ctx.fillStyle='#1C2330'; ctx.fillRect(0,0,W,H);
+
+  let yMin=Infinity, yMax=-Infinity;
+  datasets.forEach(d=>d.data.forEach(v=>{if(v!=null){yMin=Math.min(yMin,v);yMax=Math.max(yMax,v);}}));
+  if(!isFinite(yMin)){yMin=0;yMax=100;}
+  const range=yMax-yMin||1;
+  yMin-=range*.05; yMax+=range*.1;
+
+  const xScale=i=>pad.l+(i/(Math.max(1,xLabels.length-1)))*cW;
+  const yScale=v=>pad.t+cH-((v-yMin)/(yMax-yMin))*cH;
+
+  ctx.strokeStyle='#30363D'; ctx.lineWidth=0.5;
+  for(let i=0;i<=5;i++){
+    const y=pad.t+i*(cH/5);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+cW,y); ctx.stroke();
+    const val=yMax-i*(yMax-yMin)/5;
+    ctx.fillStyle='#8B949E'; ctx.font='10px JetBrains Mono'; ctx.textAlign='right';
+    ctx.fillText(val.toFixed(1),pad.l-4,y+4);
+  }
+  ctx.fillStyle='#8B949E'; ctx.font='10px IBM Plex Sans Arabic'; ctx.textAlign='center';
+  const step=Math.ceil(xLabels.length/8);
+  xLabels.forEach((lbl,i)=>{if(i%step===0)ctx.fillText(lbl,xScale(i),H-pad.b+14);});
+
+  datasets.forEach(ds=>{
+    ctx.beginPath(); ctx.strokeStyle=ds.color; ctx.lineWidth=ds.width||2;
+    if(ds.dash)ctx.setLineDash(ds.dash);else ctx.setLineDash([]);
+    let started=false;
+    ds.data.forEach((v,i)=>{if(v==null)return; const x=xScale(i),y=yScale(v);
+      if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);});
+    ctx.stroke();
+    if(ds.dot) ds.data.forEach((v,i)=>{if(v==null)return;
+      ctx.beginPath();ctx.arc(xScale(i),yScale(v),4,0,Math.PI*2);
+      ctx.fillStyle=ds.color;ctx.fill();});
+  });
+}
+
+function renderWeightChart() {
+  if (!state.followups.length) return;
+  const labels  = state.followups.map(r=>r.date||'');
+  const weights = state.followups.map(r=>r.weight||null);
+  drawLineChart('weight-chart',[
+    {data:weights,color:'#2196F3',width:2.5,dot:true,label:'الوزن'}
+  ], labels);
+}
+
+function renderGrowthCharts() {
+  const m = state.ageMonths;
+  const g = state.childData ? state.childData.gender : 'M';
+
+  const ages   = [0,1,2,3,4,5,6,9,12,15,18,21,24,30,36,42,48,54,60];
+  const bMed   = WHO_WFA_BOYS.map(d=>d[1]);
+  const gMed   = WHO_WFA_GIRLS.map(d=>d[1]);
+  const bLo    = WHO_WFA_BOYS.map(d=>d[2]);
+  const bHi    = WHO_WFA_BOYS.map(d=>d[3]);
+
+  const patW   = new Array(ages.length).fill(null);
+  const nearI  = ages.reduce((best,a,i)=>Math.abs(a-m)<Math.abs(ages[best]-m)?i:best,0);
+  if(state.weight) patW[nearI]=state.weight;
+
+  drawLineChart('who-weight-chart',[
+    {data:bLo,  color:'rgba(33,150,243,0.3)',width:1,dash:[4,4]},
+    {data:bMed, color:'#2196F3',width:2},
+    {data:bHi,  color:'rgba(33,150,243,0.3)',width:1,dash:[4,4]},
+    {data:gMed, color:'#E91E63',width:2},
+    {data:patW, color:'#FFD600',width:0,dot:true},
+  ], ages.map(a=>a+'م'));
+
+  const hAgesB = WHO_HFA_BOYS.map(d=>d[0]);
+  const hBMed  = WHO_HFA_BOYS.map(d=>d[1]);
+  const hGMed  = WHO_HFA_GIRLS.map(d=>d[1]);
+  const patH   = new Array(hAgesB.length).fill(null);
+  const hNear  = hAgesB.reduce((best,a,i)=>Math.abs(a-m)<Math.abs(hAgesB[best]-m)?i:best,0);
+  if(state.height) patH[hNear]=state.height;
+
+  drawLineChart('who-height-chart',[
+    {data:hBMed,color:'#2196F3',width:2},
+    {data:hGMed,color:'#E91E63',width:2},
+    {data:patH, color:'#FFD600',width:0,dot:true},
+  ], hAgesB.map(a=>a+'م'));
+
+  const bmiAges=[0,6,12,24,36,48,60];
+  const bmiMed =[13.5,16.0,17.5,16.5,16.0,15.5,15.3];
+  const patBMI =new Array(bmiAges.length).fill(null);
+  const bmiN   =bmiAges.reduce((best,a,i)=>Math.abs(a-m)<Math.abs(bmiAges[best]-m)?i:best,0);
+  if(state.bmi) patBMI[bmiN]=state.bmi;
+
+  drawLineChart('bmi-chart',[
+    {data:bmiMed,color:'#4CAF50',width:2},
+    {data:patBMI,color:'#FFD600',width:0,dot:true},
+  ], bmiAges.map(a=>a+'م'));
+}
+
+// ══════════════════════════════════════════════════════════════
+// SEARCH RESULTS – fix: render directly in loop
+// ══════════════════════════════════════════════════════════════
+// Override to use element click properly
+const _origSearch = searchChildren;
+window.searchChildren = async function() {
+  if (!state.fbReady) { showToast('⚠️ Firebase لم يتصل بعد'); return; }
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const nameQ     = (document.getElementById('s-name').value     || '').trim().toLowerCase();
+  const guardianQ = (document.getElementById('s-guardian').value || '').trim().toLowerCase();
+  const dobQ      = (document.getElementById('s-dob').value      || '').trim();
+  const phoneQ    = (document.getElementById('s-phone').value    || '').trim();
+
+  const area = document.getElementById('search-results-area');
+  area.innerHTML = '';
+
+  try {
+    const snap = await window._fb.getDocs(window._fb.collection(window._db, 'children'));
+    const results = [];
+    snap.forEach(d => {
+      const data = d.data();
+      const n = (data.name||'').toLowerCase();
+      const g = (data.guardian||'').toLowerCase();
+      const matchName     = !nameQ     || n.includes(nameQ);
+      const matchGuardian = !guardianQ || g.includes(guardianQ);
+      const matchDOB      = !dobQ      || (data.dob||'')=== dobQ;
+      const matchPhone    = !phoneQ    || (data.phone||'').includes(phoneQ);
+      if (matchName && matchGuardian && matchDOB && matchPhone)
+        results.push({id:d.id, ...data});
+    });
+
+    if (!results.length) {
+      area.innerHTML = `<div class="empty-state" style="padding:20px 0;">
+        <div class="es-icon" style="font-size:32px;">🔍</div>
+        <p>لم يُعثر على نتائج</p>
+        <p style="margin-top:6px;font-size:12px;color:var(--txt-3);">يمكنك إنشاء ملف جديد</p></div>`;
+    } else {
+      area.innerHTML = `<div style="font-size:12px;color:var(--txt-2);margin-bottom:4px;">
+        ${results.length} نتيجة – انقر لفتح</div>`;
+      results.forEach(child => {
+        const age = calcAgeFromDOB(child.dob);
+        const el  = document.createElement('div');
+        el.className = 'search-result-item';
+        el.innerHTML = `
+          <div>
+            <div class="sri-name">👶 ${child.name}</div>
+            <div class="sri-meta">ولي الأمر: ${child.guardian} · ${age} شهر · ${child.gender==='M'?'ذكر':'أنثى'}</div>
+          </div>
+          <span class="pill pill-blue" style="white-space:nowrap;">فتح الملف</span>`;
+        el.onclick = () => loadChild(child.id, child);
+        area.appendChild(el);
+      });
+    }
+  } catch(e) {
+    area.innerHTML = `<div class="alert alert-danger">خطأ: ${e.message}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>🔍</span> بحث';
+};
+
+// ══════════════════════════════════════════════════════════════
+// LOGIN / LOGOUT
+// ══════════════════════════════════════════════════════════════
+let currentUser = null;
+
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+
+  if (!username || !password) {
+    errEl.textContent = '⚠️ أدخل اسم المستخدم وكلمة المرور';
+    errEl.style.display = 'block'; return;
+  }
+
+  btn.textContent = '...جارٍ التحقق';
+  btn.disabled = true;
+  errEl.style.display = 'none';
+
+  if (!window._db) {
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  try {
+    const {getDocs, collection, query, where} = window._fb;
+    const q = query(
+      collection(window._db, 'admins'),
+      where('username', '==', username),
+      where('active', '==', true)
+    );
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      errEl.textContent = '❌ اسم المستخدم غير موجود أو الحساب غير نشط';
+      errEl.style.display = 'block';
+      btn.textContent = '🔐 دخول'; btn.disabled = false; return;
+    }
+
+    const adminDoc = snap.docs[0].data();
+    if (adminDoc.password !== password) {
+      errEl.textContent = '❌ كلمة المرور غير صحيحة';
+      errEl.style.display = 'block';
+      btn.textContent = '🔐 دخول'; btn.disabled = false; return;
+    }
+
+    // ✅ Login success
+    currentUser = { username: adminDoc.username, name: adminDoc.name, role: adminDoc.role };
+    sessionStorage.setItem('nutriped_user', JSON.stringify(currentUser));
+    document.getElementById('loginScreen').style.display = 'none';
+
+    // Show user name in sidebar footer
+    const footer = document.querySelector('.sidebar-footer');
+    if (footer) {
+      footer.innerHTML = `
+        <div class="vtag">v3.0</div>
+        <div style="margin-bottom:6px;">${adminDoc.name}<br><span style="font-size:10px;opacity:0.6;">${adminDoc.role}</span></div>
+        <button onclick="doLogout()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;">🚪 خروج</button>
+      `;
+    }
+
+    showToast(`✅ مرحباً ${adminDoc.name}`);
+
+  } catch(e) {
+    errEl.textContent = '❌ خطأ في الاتصال: ' + e.message;
+    errEl.style.display = 'block';
+    btn.textContent = '🔐 دخول'; btn.disabled = false;
+  }
+}
+
+function doLogout() {
+  if (!confirm('هل تريد تسجيل الخروج؟')) return;
+  sessionStorage.removeItem('nutriped_user');
+  currentUser = null;
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-btn').textContent = '🔐 دخول';
+  document.getElementById('login-btn').disabled = false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════
+window.addEventListener('fb-ready', () => {
+  state.fbReady = true;
+  // Check existing session
+  const saved = sessionStorage.getItem('nutriped_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      document.getElementById('loginScreen').style.display = 'none';
+      const footer = document.querySelector('.sidebar-footer');
+      if (footer) {
+        footer.innerHTML = `
+          <div class="vtag">v3.0</div>
+          <div style="margin-bottom:6px;">${currentUser.name}<br><span style="font-size:10px;opacity:0.6;">${currentUser.role}</span></div>
+          <button onclick="doLogout()" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;width:100%;font-family:inherit;">🚪 خروج</button>
+        `;
+      }
+      showToast(`✅ مرحباً ${currentUser.name}`);
+    } catch(e) {
+      sessionStorage.removeItem('nutriped_user');
+    }
+  }
+});
+
+// Init date
+document.getElementById('p-visit').value = today();
+renderLabTable();
+</script>
+</body>
+</html>
