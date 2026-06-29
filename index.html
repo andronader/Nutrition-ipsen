@@ -268,7 +268,7 @@ async function doLogin() {
 
   try {
     const q = window._query(
-      window._collection(window._db, 'Admins'),
+      window._collection(window._db, 'admins'),
       window._where('username', '==', username),
       window._where('active', '==', true)
     );
