@@ -268,7 +268,7 @@ async function doLogin() {
 
   try {
     const q = window._query(
-      window._collection(window._db, 'Admins'),
+      window._collection(window._db, 'admins'),
       window._where('username', '==', username),
       window._where('active', '==', true)
     );
@@ -290,7 +290,7 @@ async function doLogin() {
     const user = {
       id:       snap.docs[0].id,
       username: data.username,
-      name:     data.name,
+      name:     data.name || data.username,
       role:     data.role,
     };
     sessionStorage.setItem('nutriped_session', JSON.stringify(user));
