@@ -374,6 +374,38 @@ textarea { resize:vertical; min-height:80px; }
 <div id="toast"></div>
 <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
+<!-- Employee Followup Detail Modal -->
+<div class="modal-bg" id="empFollowupDetailModal">
+  <div class="modal" style="max-width:560px;">
+    <div class="mh"><span style="font-size:20px;">📋</span><span class="mt" id="efd-title">تفاصيل الزيارة</span><button class="mc" onclick="closeModal('empFollowupDetailModal')">✕</button></div>
+    <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:65vh;overflow-y:auto;" id="efd-body"></div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('empFollowupDetailModal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<!-- Employee Child Followups Modal -->
+<div class="modal-bg" id="empChildModal">
+  <div class="modal" style="max-width:700px;">
+    <div class="mh"><span style="font-size:20px;">👶</span><span class="mt" id="ecm-title">سجل زيارات الطفل</span><button class="mc" onclick="closeModal('empChildModal')">✕</button></div>
+    <div style="padding:16px 16px 0;">
+      <div id="ecm-info" style="background:var(--card);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
+    </div>
+    <div style="padding:0 16px 16px;overflow-x:auto;">
+      <table class="tbl">
+        <thead><tr>
+          <th>#</th><th>التاريخ</th><th>العمر</th><th>الوزن</th><th>الطول</th><th>BMI</th><th>W/H%</th><th>H/A%</th><th>السعرات</th><th>ملاحظات</th>
+        </tr></thead>
+        <tbody id="ecm-tbody"></tbody>
+      </table>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal('empChildModal')">إغلاق</button>
+    </div>
+  </div>
+</div>
+
 <!-- Delete confirm modal -->
 <div class="modal-bg" id="deleteModal">
   <div class="modal">
@@ -610,6 +642,53 @@ textarea { resize:vertical; min-height:80px; }
         </div>
       </div><!-- /followups -->
 
+      <!-- ══ PAGE: EMPLOYEES ══ -->
+      <div class="page" id="page-employees">
+        <div class="card" style="margin-bottom:16px;">
+          <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-weight:700;font-size:16px;">🧑‍⚕️ بيانات الموظفين</div>
+              <div style="color:var(--txt-2);font-size:13px;margin-top:2px;">اختر موظفاً لعرض ملفات الأطفال المسجلين منه</div>
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="loadEmployeesPage()">🔄 تحديث</button>
+          </div>
+          <div style="padding:0 20px 16px;display:flex;gap:10px;flex-wrap:wrap;">
+            <input type="text" id="emp-search" placeholder="بحث باسم الموظف..." oninput="filterEmployees()"
+              style="flex:1;min-width:200px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--txt);font-family:inherit;font-size:13px;">
+          </div>
+        </div>
+        <div id="emp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:20px;"></div>
+        <div id="emp-detail-panel" style="display:none;">
+          <div class="card" style="margin-bottom:14px;">
+            <div style="padding:16px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <button onclick="closeEmployeeDetail()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;color:var(--txt);font-family:inherit;font-size:13px;">← رجوع</button>
+              <div>
+                <div style="font-weight:700;font-size:15px;" id="edp-name">—</div>
+                <div style="color:var(--txt-2);font-size:12px;" id="edp-meta">—</div>
+              </div>
+              <div style="margin-right:auto;display:flex;gap:8px;">
+                <div class="stat-card" style="padding:8px 14px;text-align:center;"><div class="stat-val" style="font-size:18px;" id="edp-children-count">0</div><div class="stat-lbl">طفل</div></div>
+                <div class="stat-card" style="padding:8px 14px;text-align:center;"><div class="stat-val" style="font-size:18px;" id="edp-fu-count">0</div><div class="stat-lbl">زيارة</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-weight:600;">👶 ملفات الأطفال</span>
+              <span class="ct" id="edp-children-lbl">—</span>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="tbl">
+                <thead><tr>
+                  <th>#</th><th>الاسم</th><th>ولي الأمر</th><th>تاريخ الميلاد</th><th>النوع</th><th>عدد الزيارات</th><th>آخر زيارة</th><th>الحالة</th>
+                </tr></thead>
+                <tbody id="edp-children-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div><!-- /employees -->
+
 
       <!-- ══ PAGE: SETTINGS ══ -->
       <div class="page" id="page-settings">
@@ -843,6 +922,7 @@ textarea { resize:vertical; min-height:80px; }
   <button class="bn active" onclick="showPage('overview',this)" data-page="overview"><span class="bni">📊</span><span>عام</span></button>
   <button class="bn" onclick="showPage('patients',this)" data-page="patients"><span class="bni">👶</span><span>الأطفال</span></button>
   <button class="bn" onclick="showPage('followups',this)" data-page="followups"><span class="bni">📈</span><span>الزيارات</span></button>
+  <button class="bn" onclick="showPage('employees',this)" data-page="employees"><span class="bni">🧑‍⚕️</span><span>موظفين</span></button>
   <button class="bn" onclick="showPage('admins',this)" data-page="admins"><span class="bni">👥</span><span>مستخدمين</span></button>
   <button class="bn" onclick="showPage('settings',this)" data-page="settings"><span class="bni">⚙️</span><span>إعدادات</span></button>
 </nav>
@@ -866,6 +946,7 @@ const pageTitles = {
   admins:    'إدارة المستخدمين',
   settings:  'إعدادات النظام',
   backup:    'النسخ الاحتياطي',
+  employees: 'بيانات الموظفين',
 };
 
 function showPage(id, el) {
@@ -881,6 +962,7 @@ function showPage(id, el) {
   document.getElementById('topbar-title').innerHTML = `${pageTitles[id]||id} <span>/ Admin Panel</span>`;
   closeSidebar();
   if (id === 'admins') loadAdmins();
+  if (id === 'employees') loadEmployeesPage();
 }
 
 function toggleSidebar() {
@@ -1186,6 +1268,231 @@ async function confirmDelete() {
   }
   btn.disabled = false; btn.innerHTML = '🗑️ حذف نهائي';
   pendingDeleteId = null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// EMPLOYEES PAGE
+// ══════════════════════════════════════════════════════════════
+
+let _empList = [];
+let _empSelected = null;
+
+async function loadEmployeesPage() {
+  if (!window._db) return;
+  const {getDocs, collection} = window._fb;
+  try {
+    const snap = await getDocs(collection(window._db, 'admins'));
+    _empList = [];
+    snap.forEach(d => _empList.push({ id: d.id, ...d.data() }));
+    const el = document.getElementById('sb-emp-count');
+    if (el) el.textContent = _empList.length;
+    closeEmployeeDetail();
+    renderEmployeeGrid(_empList);
+  } catch(e) {
+    showToast('❌ خطأ في تحميل الموظفين: ' + e.message);
+  }
+}
+
+function renderEmployeeGrid(empArr) {
+  const grid = document.getElementById('emp-grid');
+  if (!grid) return;
+  if (!empArr.length) {
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--txt-2);">لا توجد بيانات موظفين</div>';
+    return;
+  }
+  grid.innerHTML = empArr.map(emp => {
+    const empChildren  = children.filter(c  => c.createdBy  && (c.createdBy.id === emp.id  || c.createdBy.username === emp.username));
+    const empFollowups = followups.filter(f => f.recordedBy && (f.recordedBy.id === emp.id || f.recordedBy.username === emp.username));
+    const roleLabel = emp.role === 'superadmin' ? '👑 Super Admin' : emp.role === 'admin' ? '🔐 Admin' : '👤 موظف';
+    return `<div onclick="openEmployeeDetail('${emp.id}')"
+      style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;cursor:pointer;transition:border-color .15s,box-shadow .15s;"
+      onmouseover="this.style.borderColor='var(--blue)';this.style.boxShadow='0 0 0 2px rgba(31,111,235,0.15)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.boxShadow=''">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div style="width:40px;height:40px;border-radius:50%;background:var(--blue);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🧑‍⚕️</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:700;font-size:14px;">${emp.name || emp.username}</div>
+          <div style="font-size:11px;color:var(--txt-2);">${emp.username}</div>
+        </div>
+        <span class="pill ${emp.role==='superadmin'?'p-blue':'p-gray'}" style="font-size:10px;">${roleLabel}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="background:var(--card);border-radius:8px;padding:8px 10px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--blue);">${empChildren.length}</div>
+          <div style="font-size:11px;color:var(--txt-2);">طفل مسجّل</div>
+        </div>
+        <div style="background:var(--card);border-radius:8px;padding:8px 10px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:var(--green);">${empFollowups.length}</div>
+          <div style="font-size:11px;color:var(--txt-2);">زيارة محفوظة</div>
+        </div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--txt-3);text-align:center;">${emp.active ? '🟢 نشط' : '🔴 غير نشط'}</div>
+    </div>`;
+  }).join('');
+}
+
+function filterEmployees() {
+  const q = (document.getElementById('emp-search')?.value || '').toLowerCase();
+  const filtered = _empList.filter(e => !q || (e.name||'').toLowerCase().includes(q) || (e.username||'').toLowerCase().includes(q));
+  renderEmployeeGrid(filtered);
+}
+
+function openEmployeeDetail(empId) {
+  const emp = _empList.find(e => e.id === empId);
+  if (!emp) return;
+  _empSelected = emp;
+
+  const empChildren  = children.filter(c  => c.createdBy  && (c.createdBy.id === emp.id  || c.createdBy.username === emp.username));
+  const empFollowups = followups.filter(f => f.recordedBy && (f.recordedBy.id === emp.id || f.recordedBy.username === emp.username));
+  const fuCount = {};
+  empFollowups.forEach(f => { fuCount[f.childId] = (fuCount[f.childId]||0)+1; });
+
+  document.getElementById('edp-name').textContent = emp.name || emp.username;
+  document.getElementById('edp-meta').textContent = `${emp.username} · ${emp.role}`;
+  document.getElementById('edp-children-count').textContent = empChildren.length;
+  document.getElementById('edp-fu-count').textContent = empFollowups.length;
+  document.getElementById('edp-children-lbl').textContent = `${empChildren.length} ملف`;
+
+  const tbody = document.getElementById('edp-children-tbody');
+  if (!empChildren.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد ملفات أطفال لهذا الموظف</td></tr>';
+  } else {
+    tbody.innerHTML = empChildren.map((c, i) => {
+      const visits = fuCount[c.id] || 0;
+      const cFu = empFollowups.filter(f => f.childId === c.id).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      const lastFu = cFu[0];
+      const wh = lastFu?.wh;
+      const status = !wh ? '<span class="pill p-gray">—</span>'
+        : wh<70  ? '<span class="pill p-red">Severe Wasting</span>'
+        : wh<80  ? '<span class="pill p-amber">Moderate Wasting</span>'
+        : wh<90  ? '<span class="pill p-amber">Mild Wasting</span>'
+        : '<span class="pill p-green">طبيعي</span>';
+      return `<tr style="cursor:pointer;"
+        onclick="openEmpChildFollowups('${c.id}','${emp.id}')"
+        onmouseover="this.style.background='var(--card)'"
+        onmouseout="this.style.background=''">
+        <td style="font-family:var(--mono);color:var(--txt-3);">${i+1}</td>
+        <td style="font-weight:600;">${c.name}</td>
+        <td>${c.guardian||'—'}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${c.dob||'—'}</td>
+        <td>${c.gender==='M'?'ذكر':'أنثى'}</td>
+        <td style="font-family:var(--mono);">${visits}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${lastFu?.date||'—'}</td>
+        <td>${status}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.querySelectorAll('#page-employees > .card').forEach(el => el.style.display = 'none');
+  document.getElementById('emp-grid').style.display = 'none';
+  document.getElementById('emp-detail-panel').style.display = '';
+}
+
+function closeEmployeeDetail() {
+  _empSelected = null;
+  document.getElementById('emp-detail-panel').style.display = 'none';
+  document.getElementById('emp-grid').style.display = '';
+  document.querySelectorAll('#page-employees > .card').forEach(el => el.style.display = '');
+}
+
+function openEmpChildFollowups(childId, empId) {
+  const emp   = _empList.find(e => e.id === empId) || _empSelected;
+  const child = childMap[childId];
+  if (!child) return;
+
+  const empFollowups = followups.filter(f =>
+    f.childId === childId &&
+    f.recordedBy && (f.recordedBy.id === empId || f.recordedBy.username === emp?.username)
+  ).sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  document.getElementById('ecm-title').textContent = `سجل زيارات: ${child.name}`;
+
+  const m = calcAge(child.dob);
+  document.getElementById('ecm-info').innerHTML = [
+    ['👶 الاسم', child.name],
+    ['👨‍👩‍👦 ولي الأمر', child.guardian||'—'],
+    ['📅 تاريخ الميلاد', child.dob||'—'],
+    ['🕐 العمر', m + ' شهر'],
+    ['⚧ النوع', child.gender==='M'?'ذكر':'أنثى'],
+    ['📱 الهاتف', child.phone||'—'],
+    ['🏥 التشخيص', child.diagnosis||'—'],
+    ['🧑‍⚕️ الموظف', emp?.name||emp?.username||'—'],
+  ].map(([label, val]) => `
+    <div style="background:var(--bg);border-radius:6px;padding:8px 10px;">
+      <div style="font-size:10px;color:var(--txt-3);margin-bottom:2px;">${label}</div>
+      <div style="font-weight:600;font-size:13px;">${val}</div>
+    </div>`).join('');
+
+  const tbody = document.getElementById('ecm-tbody');
+  if (!empFollowups.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد زيارات مسجّلة</td></tr>';
+  } else {
+    tbody.innerHTML = empFollowups.map((f, i) => `
+      <tr style="cursor:pointer;"
+        onclick="openEmpFollowupDetail(${i},'${empId}')"
+        onmouseover="this.style.background='var(--card)'"
+        onmouseout="this.style.background=''">
+        <td style="font-family:var(--mono);color:var(--txt-3);">${i+1}</td>
+        <td style="font-family:var(--mono);font-size:12px;">${f.date||'—'}</td>
+        <td>${f.age||'—'}</td>
+        <td style="color:var(--blue);font-weight:600;">${fmt(f.weight)}</td>
+        <td>${fmt(f.height)}</td>
+        <td style="font-family:var(--mono);">${fmt(f.bmi)}</td>
+        <td>${f.wh ? fmt(f.wh)+'%' : '—'}</td>
+        <td>${f.ha ? fmt(f.ha)+'%' : '—'}</td>
+        <td>${f.calories||'—'}</td>
+        <td style="font-size:12px;color:var(--txt-2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+          title="${f.notes||''}">${f.notes||'—'}</td>
+      </tr>`).join('');
+  }
+  // store followups for detail view
+  window._currentEmpFollowups = empFollowups;
+  openModal('empChildModal');
+}
+
+function openEmpFollowupDetail(index, empId) {
+  const r = (window._currentEmpFollowups || [])[index];
+  if (!r) return;
+  document.getElementById('efd-title').textContent = `زيارة ${index+1} — ${r.date||''}`;
+  const fields = [
+    ['📅 التاريخ',        r.date       || '—'],
+    ['🕐 العمر (شهر)',    r.age        || '—'],
+    ['⚖️ الوزن (كجم)',    fmt(r.weight)],
+    ['📏 الطول (سم)',     fmt(r.height)],
+    ['📊 BMI',            fmt(r.bmi)],
+    ['📉 W/H%',           r.wh ? fmt(r.wh)+'%' : '—'],
+    ['📈 H/A%',           r.ha ? fmt(r.ha)+'%' : '—'],
+    ['🔥 السعرات',        r.calories   || '—'],
+    ['🥩 البروتين (جم)',  r.protein    || '—'],
+    ['🍞 الكربوهيدرات',  r.carbs      || '—'],
+    ['🧈 الدهون (جم)',    r.fat        || '—'],
+    ['💧 السوائل (مل)',   r.fluids     || '—'],
+    ['📐 محيط الرأس',    fmt(r.head)],
+    ['📐 محيط الخصر',    fmt(r.waist)],
+    ['🍽️ نوع التغذية',   r.feeding    || '—'],
+    ['💊 الأدوية',        r.meds       || '—'],
+  ];
+  document.getElementById('efd-body').innerHTML =
+    fields.map(([label, val]) => `
+      <div style="background:var(--card);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:11px;color:var(--txt-3);margin-bottom:3px;">${label}</div>
+        <div style="font-weight:600;color:var(--txt);font-size:14px;">${val}</div>
+      </div>`).join('') +
+    (r.notes ? `<div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;color:var(--txt-3);margin-bottom:3px;">📝 الملاحظات</div>
+      <div style="font-size:13px;color:var(--txt);">${r.notes}</div>
+    </div>` : '') +
+    (r.labResults && Object.keys(r.labResults).length ? `
+    <div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;color:var(--txt-3);margin-bottom:8px;">🧪 التحاليل المخبرية</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        ${Object.entries(r.labResults).map(([k,v]) => `
+          <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:12px;">
+            <span style="color:var(--txt-2);">${k}</span><strong>${v}</strong>
+          </div>`).join('')}
+      </div>
+    </div>` : '');
+  openModal('empFollowupDetailModal');
 }
 
 // ── Export ────────────────────────────────────────────────────

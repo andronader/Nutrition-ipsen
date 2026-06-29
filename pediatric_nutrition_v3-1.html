@@ -1512,12 +1512,14 @@ async function createNewChild() {
       showToast('📂 الطفل موجود مسبقاً — تم فتح ملفه');
     } else {
       // طفل جديد — أنشئ ملفاً جديداً
+      let _su = null; try { _su = JSON.parse(sessionStorage.getItem('nutriped_session')); } catch(e) {}
       const childData = {
         name, guardian, dob, gender,
         phone:     document.getElementById('nc-phone').value.trim() || '',
         diagnosis: document.getElementById('nc-diagnosis').value.trim() || '',
         notes:     document.getElementById('nc-notes').value.trim() || '',
         createdAt: window._fb.serverTimestamp(),
+        createdBy: _su ? { id: _su.id, name: _su.name || _su.username, username: _su.username } : null,
       };
       const docRef = await addDoc(collection(window._db, 'children'), childData);
       closeModal('newChildModal');
@@ -1650,6 +1652,7 @@ async function saveFollowup() {
   btn.innerHTML = '<span class="spinner"></span>';
 
   const {addDoc, collection, serverTimestamp} = window._fb;
+  let _su2 = null; try { _su2 = JSON.parse(sessionStorage.getItem('nutriped_session')); } catch(e) {}
   const followupData = {
     childId:    state.childId,
     date:       document.getElementById('p-visit').value || today(),
@@ -1674,6 +1677,7 @@ async function saveFollowup() {
     labResults: {...state.labResults},
     activity:   state.activity,
     savedAt:    serverTimestamp(),
+    recordedBy: _su2 ? { id: _su2.id, name: _su2.name || _su2.username, username: _su2.username } : null,
   };
 
   try {
