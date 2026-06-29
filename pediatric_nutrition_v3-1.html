@@ -1512,12 +1512,16 @@ async function createNewChild() {
       showToast('📂 الطفل موجود مسبقاً — تم فتح ملفه');
     } else {
       // طفل جديد — أنشئ ملفاً جديداً
+      // Get current user from session
+      let _sessionUser = null;
+      try { _sessionUser = JSON.parse(sessionStorage.getItem('nutriped_session')); } catch(e) {}
       const childData = {
         name, guardian, dob, gender,
         phone:     document.getElementById('nc-phone').value.trim() || '',
         diagnosis: document.getElementById('nc-diagnosis').value.trim() || '',
         notes:     document.getElementById('nc-notes').value.trim() || '',
         createdAt: window._fb.serverTimestamp(),
+        createdBy: _sessionUser ? { id: _sessionUser.id, name: _sessionUser.name, username: _sessionUser.username } : null,
       };
       const docRef = await addDoc(collection(window._db, 'children'), childData);
       closeModal('newChildModal');
@@ -1650,6 +1654,8 @@ async function saveFollowup() {
   btn.innerHTML = '<span class="spinner"></span>';
 
   const {addDoc, collection, serverTimestamp} = window._fb;
+  let _sessionUser2 = null;
+  try { _sessionUser2 = JSON.parse(sessionStorage.getItem('nutriped_session')); } catch(e) {}
   const followupData = {
     childId:    state.childId,
     date:       document.getElementById('p-visit').value || today(),
@@ -1674,6 +1680,7 @@ async function saveFollowup() {
     labResults: {...state.labResults},
     activity:   state.activity,
     savedAt:    serverTimestamp(),
+    recordedBy: _sessionUser2 ? { id: _sessionUser2.id, name: _sessionUser2.name, username: _sessionUser2.username } : null,
   };
 
   try {
