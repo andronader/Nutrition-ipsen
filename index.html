@@ -290,7 +290,7 @@ async function doLogin() {
     const user = {
       id:       snap.docs[0].id,
       username: data.username,
-      name:     data.name || data.username,
+      name:     data.name,
       role:     data.role,
     };
     sessionStorage.setItem('nutriped_session', JSON.stringify(user));
