@@ -5,10 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NutriPed — نظام تغذية الأطفال</title>
 
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1B3A6B">
+<link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NutriPed">
+
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp }
+  import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp, onSnapshot, limit }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
   // ─── REPLACE WITH YOUR CONFIG ───────────────────────────────────
@@ -27,7 +37,7 @@
 
   window._db  = db;
   window._col = { children: 'children', followups: 'followups' };
-  window._fb  = { collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp };
+  window._fb  = { collection, doc, setDoc, getDoc, getDocs, addDoc, query, where, orderBy, serverTimestamp, onSnapshot, limit };
   window.dispatchEvent(new Event('fb-ready'));
 </script>
 
@@ -581,6 +591,19 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
 <!-- ══════════════════════════════
      SEARCH / NEW PATIENT MODAL
 ══════════════════════════════ -->
+<!-- ══ Notifications Modal ══ -->
+<div class="modal-bg" id="notifModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">🔔 الإشعارات</span>
+      <button class="modal-close" onclick="closeModal('notifModal')">✕</button>
+    </div>
+    <div class="modal-body" id="notif-list" style="max-height:60vh;overflow-y:auto;">
+      <div style="color:var(--txt-2);text-align:center;padding:20px;">لا توجد إشعارات</div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="searchModal">
   <div class="modal">
     <div class="modal-header">
@@ -736,6 +759,10 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
         لوحة المتابعة <span>/ نظام التغذية للأطفال</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <button class="icon-btn" title="الإشعارات" onclick="openNotifications()" style="position:relative;">
+          🔔
+          <span id="notif-badge" style="display:none;position:absolute;top:-2px;left:-2px;background:var(--red,#e53935);color:#fff;border-radius:999px;font-size:10px;line-height:1;padding:2px 5px;font-weight:700;">0</span>
+        </button>
         <button class="icon-btn" title="طباعة" onclick="window.print()">🖨️</button>
         <button class="btn btn-primary btn-sm" onclick="openModal('searchModal')">
           🔍 <span class="hide-xs">فتح / جديد</span>
@@ -893,7 +920,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
                 <div class="fg"><label>العمر (تلقائي)</label><input type="text" id="p-age-text" readonly></div>
                 <div class="fg"><label>تاريخ الزيارة</label><input type="date" id="p-visit"></div>
               </div>
-              <div class="fg"><label>التشخيص / الحالة</label><input type="text" id="p-diagnosis" placeholder="تشخيص هذه الزيارة..."></div>
+              <div class="fg"><label>التشخيص / الحالة</label><input type="text" id="p-diagnosis" placeholder="تشخيص هذه الزيارة..." oninput="updateSolaproMix()"></div>
               <div class="fr">
                 <div class="fg">
                   <label>نوع الرضاعة</label>
@@ -916,7 +943,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
                   </select>
                 </div>
               </div>
-              <div class="fg"><label>أدوية / حساسية</label><input type="text" id="p-meds" placeholder="إن وجدت"></div>
+              <div class="fg"><label>أدوية / حساسية</label><input type="text" id="p-meds" placeholder="إن وجدت" oninput="updateSolaproMix()"></div>
             </div>
           </div>
 
@@ -1104,6 +1131,53 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
           <div class="card-header"><span class="card-icon">💊</span><span class="card-title">الفيتامينات والمعادن الموصى بها</span></div>
           <div class="card-body" id="micro-details"><div style="color:var(--txt-2);text-align:center;padding:20px;">أدخل البيانات أولاً</div></div>
         </div>
+
+        <!-- ══ Child's Growth & Nutrition Plan (AI) ══ -->
+        <div class="card">
+          <div class="card-header"><span class="card-icon">🌱</span><span class="card-title">خطة نمو الطفل وتغذيته</span></div>
+          <div class="card-body">
+            <div style="font-size:12px;color:var(--txt-2);margin:-4px 0 12px;line-height:1.7;">
+              المساحة اللي منها الأم تقدر تشوف خطة تغذية طفلها وتناقشها مع الذكاء الاصطناعي. الأولوية دايمًا لعلاج <b>التقزم</b> (قصر القامة) لو موجود — لأن الوزن بيتظبط تلقائيًا لما مشكلة النمو الطولي تتحل؛ مشكلة الوزن بتظهر هنا لكن كأولوية تانية.
+            </div>
+            <div class="fr" style="align-items:flex-end;">
+              <div class="fg" style="max-width:220px;">
+                <label>نسبة سولابرو الافتراضية</label>
+                <div class="inp-unit">
+                  <input type="number" id="sp-pct" value="50" min="0" max="100" step="5" oninput="updateSolaproMix()">
+                  <span class="ul">%</span>
+                </div>
+              </div>
+              <div class="fg" style="max-width:260px;">
+                <label>الطعام الذي يتناوله الطفل فعليًا (إن وُجد)</label>
+                <div class="inp-unit">
+                  <input type="number" id="sp-actual-food" min="0" step="50" placeholder="اختياري" oninput="updateSolaproMix()">
+                  <span class="ul">kcal/يوم</span>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:11.5px;color:var(--txt-3);padding-top:4px;">لو الطفل بياكل كمية فعلية من الطعام، هنحسب سولابرو على الفرق الناقص فقط لو كان أقل من النسبة الافتراضية (مش هنزوّد سولابرو زيادة عن احتياجه)</div>
+
+            <div id="sp-mix-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:10px;">
+              <div style="color:var(--txt-2);text-align:center;padding:20px;grid-column:1/-1;">أدخل بيانات الزيارة أولاً</div>
+            </div>
+
+            <div id="sp-flags" style="margin-top:10px;"></div>
+
+            <div class="divider"></div>
+
+            <button class="btn btn-primary" id="sp-ai-btn" onclick="generateSolaproAIPlan()" style="width:100%;">
+              🤖 إنشاء خطة النمو والتغذية بالذكاء الاصطناعي
+            </button>
+
+            <div id="sp-chat-thread" style="margin-top:14px;display:flex;flex-direction:column;gap:10px;max-height:420px;overflow-y:auto;"></div>
+
+            <div id="sp-chat-inputRow" style="display:none;margin-top:10px;gap:8px;">
+              <input type="text" id="sp-chat-input" placeholder="اسأليني أي سؤال عن خطة طفلك..." style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();sendSolaproChatMessage();}">
+              <button class="btn btn-primary" id="sp-chat-send-btn" onclick="sendSolaproChatMessage()" style="white-space:nowrap;">إرسال</button>
+            </div>
+          </div>
+        </div>
+
       </div><!-- /page-nutrition -->
 
 
@@ -1170,6 +1244,8 @@ const state = {
   calories: 0, protein: 0, carbs: 0, fat: 0, fluids: 0,
   labResults: {},
 
+  solaproPct: 30, // % of daily calories covered by Solapro (editable by user)
+
   fbReady: false,
 };
 
@@ -1178,6 +1254,17 @@ const WHO_WFA_BOYS  = [[0,3.3,2.1,4.8],[1,4.5,2.9,6.3],[2,5.6,3.8,7.5],[3,6.4,4.
 const WHO_WFA_GIRLS = [[0,3.2,2.0,4.6],[1,4.2,2.7,5.8],[2,5.1,3.4,7.0],[3,5.8,3.9,7.8],[4,6.4,4.4,8.6],[5,6.9,4.8,9.2],[6,7.3,5.1,9.8],[9,8.6,6.0,11.4],[12,9.6,7.0,12.5],[15,10.4,7.6,13.5],[18,11.1,8.2,14.4],[21,11.7,8.7,15.2],[24,12.2,9.1,15.9],[30,13.3,10.0,17.2],[36,14.3,10.8,18.5],[42,15.3,11.5,19.7],[48,16.3,12.2,20.9],[54,17.2,12.9,22.1],[60,18.2,13.7,23.2]];
 const WHO_HFA_BOYS  = [[0,49.9,46.1,53.7],[3,61.4,57.3,65.5],[6,67.6,63.3,71.9],[9,72.0,67.5,76.5],[12,75.7,71.0,80.5],[18,82.3,77.2,87.7],[24,87.8,82.3,93.5],[30,92.7,86.8,98.7],[36,96.1,89.7,102.6],[42,99.9,93.0,106.8],[48,103.3,96.1,110.6],[54,106.7,99.0,114.4],[60,110.0,101.7,118.1]];
 const WHO_HFA_GIRLS = [[0,49.1,45.4,52.9],[3,59.8,55.6,64.0],[6,65.7,61.2,70.2],[9,70.1,65.3,75.0],[12,74.0,68.9,79.2],[18,80.7,75.2,86.3],[24,86.4,80.5,92.2],[30,91.4,85.1,97.7],[36,95.1,88.3,101.9],[42,98.9,91.7,106.2],[48,102.7,95.0,110.3],[54,106.2,98.1,114.2],[60,109.4,101.1,117.6]];
+
+// ── Solapro Nutritional Data (per 5 scoops) ─────────────────────
+const SOLAPRO_5SCOOP = { kcal:226, protein:6.74, carbs:23.9, sugar:6.7, fat:3.5 };
+const SOLAPRO_SCOOP  = {
+  kcal:    SOLAPRO_5SCOOP.kcal    / 5,
+  protein: SOLAPRO_5SCOOP.protein / 5,
+  carbs:   SOLAPRO_5SCOOP.carbs   / 5,
+  sugar:   SOLAPRO_5SCOOP.sugar   / 5,
+  fat:     SOLAPRO_5SCOOP.fat     / 5,
+};
+const SOLAPRO_PROFILE = `سولابرو (لكل 5 scoops): ${SOLAPRO_5SCOOP.kcal} kcal، بروتين ${SOLAPRO_5SCOOP.protein} جم، كربوهيدرات ${SOLAPRO_5SCOOP.carbs} جم (منها سكريات ${SOLAPRO_5SCOOP.sugar} جم)، دهون ${SOLAPRO_5SCOOP.fat} جم. المكونات: Milk Protein Concentrate 80% + Soy Protein Isolate, DHA من Algae Oil, Probiotics (Lactobacillus acidophilus), Taurine, L-Carnitine, Arginine, فيتامينات ومعادن كاملة، FOS (prebiotic).`;
 
 // ── Lab Tests ─────────────────────────────────────────────────
 const LAB_TESTS = [
@@ -1792,24 +1879,60 @@ function updateDashboard(whoW, whoH) {
   if (ha) setPill('ha-class', classify(ha,[85,90,95,999],
     ['Severe Stunting 🚨','Moderate Stunting ⚠️','Mild Stunting','طبيعي ✅'],
     ['pill-red','pill-amber','pill-amber','pill-green']));
+
+  const stuntedSev  = ha > 0 && ha < 85;               // تقزم شديد
+  const stuntedMod  = ha > 0 && ha >= 85 && ha < 90;    // تقزم متوسط
+  const stuntedMild = ha > 0 && ha >= 90 && ha < 95;    // تقزم بسيط
+  const isStunted   = stuntedSev || stuntedMod || stuntedMild;
+  state.haPct = ha;
+  state.isStunted = isStunted;
+  state.stuntSeverity = stuntedSev ? 'severe' : stuntedMod ? 'moderate' : stuntedMild ? 'mild' : null;
+
+  let bmiClassObj = null;
   if (bmi) {
-    const c = classify(bmi,[14,16,18.5,25,30,999],
+    bmiClassObj = classify(bmi,[14,16,18.5,25,30,999],
       ['نقص حاد ⚠️','نقص','أقل من المثالي','طبيعي ✅','زيادة وزن','سمنة'],
       ['pill-red','pill-amber','pill-amber','pill-green','pill-amber','pill-red']);
-    setPill('bmi-class', c);
+    setPill('bmi-class', bmiClassObj);
+  }
+
+  // الحالة الرئيسية المعروضة أعلى الشاشة: الأولوية السريرية هزال > تقزم > BMI
+  // (تجنب إظهار "زيادة وزن/يحتاج تقليل" لطفل متقزم — المشكلة الحقيقية قصر القامة مش زيادة دهون)
+  let mainStatus = null;
+  if (wh && wh < 70)            mainStatus = {label:'Severe Wasting 🚨', cls:'s-danger'};
+  else if (stuntedSev)          mainStatus = {label:'تقزم شديد 🚨', cls:'s-danger'};
+  else if (wh && wh < 80)       mainStatus = {label:'Moderate Wasting ⚠️', cls:'s-warn'};
+  else if (stuntedMod)          mainStatus = {label:'تقزم متوسط ⚠️', cls:'s-warn'};
+  else if (stuntedMild)         mainStatus = {label:'تقزم بسيط', cls:'s-warn'};
+  else if (bmiClassObj)         mainStatus = {label:bmiClassObj.label, cls:(bmiClassObj.cls.includes('green')?'s-ok':bmiClassObj.cls.includes('red')?'s-danger':'s-warn')};
+
+  if (mainStatus) {
     const sb = document.getElementById('dash-status');
-    sb.textContent = c.label;
-    sb.className = 'status-badge ' + (c.cls.includes('green')?'s-ok':c.cls.includes('red')?'s-danger':'s-warn');
-    document.getElementById('pi-status').textContent = c.label;
-    document.getElementById('pi-status').className   = 'status-badge ' + (c.cls.includes('green')?'s-ok':c.cls.includes('red')?'s-danger':'s-warn');
+    sb.textContent = mainStatus.label;
+    sb.className   = 'status-badge ' + mainStatus.cls;
+    document.getElementById('pi-status').textContent = mainStatus.label;
+    document.getElementById('pi-status').className   = 'status-badge ' + mainStatus.cls;
   }
 
   // Alerts
   const alerts = [];
   if (wh < 70)  alerts.push({t:'danger',  msg:'Severe Wasting – تدخل غذائي فوري مطلوب'});
   else if (wh < 80) alerts.push({t:'warning', msg:'Moderate Wasting – تعديل الخطة الغذائية'});
-  if (ha < 85)  alerts.push({t:'danger',  msg:'Severe Stunting – تأخر نمو شديد في الطول'});
-  if (bmi > 25) alerts.push({t:'warning', msg:'زيادة في الوزن – مراجعة السعرات'});
+
+  if (stuntedSev)
+    alerts.push({t:'danger', msg:'🌱 تقزم شديد (Severe Stunting) — الأولوية لدعم النمو الطولي مش تقليل السعرات: بروتين كافٍ + زنك + فيتامين د + L-Arginine (متوفر في سولابرو) لدعم إفراز هرمون النمو ومحور IGF-1'});
+  else if (stuntedMod)
+    alerts.push({t:'warning', msg:'🌱 تقزم متوسط (Moderate Stunting) — ركّز على دعم النمو الطولي: بروتين + زنك + L-Arginine (متوفر في سولابرو) بدلاً من تقليل السعرات'});
+  else if (stuntedMild)
+    alerts.push({t:'info', msg:'🌱 تقزم بسيط (Mild Stunting) — تابع منحنى الطول، وزوّد البروتين وL-Arginine (سولابرو) لدعم النمو'});
+
+  if (bmi > 25) {
+    if (isStunted)
+      alerts.push({t:'info', msg:'ℹ️ الوزن يبدو مرتفعًا حسب BMI، لكن غالبًا بسبب قصر القامة (تقزم) وليس زيادة دهون حقيقية — لا يُنصح بتقليل السعرات؛ التركيز يكون على علاج التقزم نفسه'});
+    else
+      alerts.push({t:'warning', msg:'زيادة في الوزن – مراجعة السعرات'});
+  }
+
   if (prevWeight && weight && weight < prevWeight)
     alerts.push({t:'warning', msg:`انخفاض الوزن: ${fmt(prevWeight-weight)} كجم`});
   if (!alerts.length && calories > 0)
@@ -1918,11 +2041,220 @@ function updateNutritionPage() {
            <div class="mc-value" style="font-size:20px;color:var(--teal);">${v}</div>
            <div class="mc-unit">${u}</div></div>`).join('')}
     </div>`;
+
+  updateSolaproMix();
 }
 
 // ══════════════════════════════════════════════════════════════
-// LAB TABLE
+// SOLAPRO + NATURAL FOOD MIX
 // ══════════════════════════════════════════════════════════════
+function updateSolaproMix() {
+  const { calories, protein, ageMonths } = state;
+  const grid  = document.getElementById('sp-mix-grid');
+  const flags = document.getElementById('sp-flags');
+  if (!grid) return;
+  if (!calories) { grid.innerHTML = '<div style="color:var(--txt-2);text-align:center;padding:20px;grid-column:1/-1;">أدخل بيانات الزيارة أولاً</div>'; return; }
+
+  let pct = parseFloat(document.getElementById('sp-pct').value);
+  if (isNaN(pct) || pct < 0) pct = 0;
+  if (pct > 100) pct = 100;
+  state.solaproPct = pct;
+
+  const defaultSolaproKcal = calories * pct / 100;
+
+  // لو متاحة كمية الطعام الفعلية اللي الطفل بياكلها، نحسب سولابرو على
+  // الفرق الناقص فقط لو كان أقل من النسبة الافتراضية (النسبة الأقل تُستخدم)
+  const actualFoodInput = parseFloat(document.getElementById('sp-actual-food').value);
+  const hasActualFood   = !isNaN(actualFoodInput) && actualFoodInput >= 0;
+  let targetSolaproKcal = defaultSolaproKcal;
+  let lowerNote = '';
+  if (hasActualFood) {
+    const gap = Math.max(0, calories - actualFoodInput);
+    if (gap < defaultSolaproKcal) {
+      targetSolaproKcal = gap;
+      lowerNote = `الطفل بياكل تقريبًا ${Math.round(actualFoodInput)} kcal فعليًا من احتياجه اليومي (${calories} kcal)، فاحتسبنا سولابرو على الفرق الناقص فقط (${Math.round(gap)} kcal) بدل النسبة الافتراضية (${Math.round(defaultSolaproKcal)} kcal)`;
+    }
+  }
+  state.foodActualIntake = hasActualFood ? actualFoodInput : null;
+
+  const scoops       = targetSolaproKcal / SOLAPRO_SCOOP.kcal;
+  const scoopsRound  = Math.round(scoops * 2) / 2; // nearest 0.5 scoop
+  const spProtein   = scoopsRound * SOLAPRO_SCOOP.protein;
+  const spCarbs     = scoopsRound * SOLAPRO_SCOOP.carbs;
+  const spSugar     = scoopsRound * SOLAPRO_SCOOP.sugar;
+  const spFat       = scoopsRound * SOLAPRO_SCOOP.fat;
+  const spKcalActual = scoopsRound * SOLAPRO_SCOOP.kcal;
+
+  const foodCalories = Math.max(0, calories - spKcalActual);
+  const foodProtein  = Math.max(0, protein  - spProtein);
+
+  // store for AI call
+  state.solaproScoops   = scoopsRound;
+  state.solaproKcal     = spKcalActual;
+  state.solaproProtein  = spProtein;
+  state.solaproCarbs    = spCarbs;
+  state.solaproSugar    = spSugar;
+  state.solaproFat      = spFat;
+  state.foodCalories    = foodCalories;
+  state.foodProtein     = foodProtein;
+
+  grid.innerHTML = `
+    <div class="mc" style="text-align:center;border:1px solid var(--blue);">
+      <div class="mc-label">🍼 سولابرو</div>
+      <div class="mc-value" style="color:var(--blue);font-size:22px;">${fmt(scoopsRound,1)}</div>
+      <div class="mc-unit">scoop/يوم (~${Math.round(spKcalActual)} kcal)</div>
+      <div style="font-size:11px;color:var(--txt-3);margin-top:4px;">بروتين ${fmt(spProtein,1)} جم · سكريات ${fmt(spSugar,1)} جم</div>
+    </div>
+    <div class="mc" style="text-align:center;border:1px solid var(--green);">
+      <div class="mc-label">🥗 طعام طبيعي</div>
+      <div class="mc-value" style="color:var(--green);font-size:22px;">${Math.round(foodCalories)}</div>
+      <div class="mc-unit">kcal/يوم متبقية</div>
+      <div style="font-size:11px;color:var(--txt-3);margin-top:4px;">بروتين متبقٍ ${fmt(foodProtein,1)} جم</div>
+    </div>
+    ${lowerNote ? `<div style="grid-column:1/-1;font-size:11.5px;color:var(--txt-3);background:var(--bg-input);padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--border);">ℹ️ ${lowerNote}</div>` : ''}`;
+
+  // Special-condition flags (diagnosis / meds-allergy text fields)
+  const diagnosisTxt = (document.getElementById('p-diagnosis')?.value || '').toLowerCase();
+  const medsTxt       = (document.getElementById('p-meds')?.value || '').toLowerCase();
+  const combined = diagnosisTxt + ' ' + medsTxt;
+  const badges = [];
+  if (state.isStunted) {
+    const sevLabel = state.stuntSeverity === 'severe' ? 'شديد' : state.stuntSeverity === 'moderate' ? 'متوسط' : 'بسيط';
+    badges.push({t:'info', msg:`🌱 تقزم ${sevLabel} — سولابرو يحتوي L-Arginine اللي بيدعم إفراز هرمون النمو ومحور IGF-1، فهو مناسب كجزء من خطة علاج التقزم؛ لا يُنصح بتقليل السعرات في هذه الحالة`});
+  }
+  if (/سكر|سكري|diabet/.test(combined))
+    badges.push({t:'warning', msg:'⚠️ حالة سكر مذكورة — راعِ أن سولابرو يحتوي سكريات (' + fmt(SOLAPRO_5SCOOP.sugar,1) + ' جم/5 scoops)، وسيُراعى ذلك في خطة الذكاء الاصطناعي'});
+  if (/حساسي|allerg|لبن|ألبان|soy|صويا/.test(combined))
+    badges.push({t:'warning', msg:'⚠️ حساسية مذكورة — سولابرو يحتوي Milk Protein وSoy Protein، تأكد من ملاءمته لحالة الطفل'});
+  flags.innerHTML = badges.map(b => `<div class="alert alert-${b.t}"><span>⚠️</span><span>${b.msg}</span></div>`).join('');
+}
+
+// ── AI context payload builder (shared by initial plan + chat) ──
+function buildSolaproAIContext() {
+  return {
+    ageMonths:        state.ageMonths,
+    gender:            state.childData ? state.childData.gender : '',
+    weight:            state.weight,
+    height:            state.height,
+    diagnosis:         document.getElementById('p-diagnosis')?.value || '',
+    allergiesOrMeds:   document.getElementById('p-meds')?.value || '',
+    feeding:           document.getElementById('p-feeding')?.value || '',
+    totalCalories:     state.calories,
+    totalProtein:      state.protein,
+    solaproPct:        state.solaproPct,
+    solaproScoops:     state.solaproScoops,
+    solaproKcal:        Math.round(state.solaproKcal || 0),
+    solaproProtein:    fmt(state.solaproProtein,1),
+    solaproSugar:      fmt(state.solaproSugar,1),
+    foodCalories:      Math.round(state.foodCalories || 0),
+    foodProtein:       fmt(state.foodProtein,1),
+    actualFoodIntake:  state.foodActualIntake,
+    isStunted:         state.isStunted || false,
+    stuntSeverity:     state.stuntSeverity || null,
+  };
+}
+
+let spChatHistory = []; // [{role:'user'|'assistant', content:string}]
+
+function renderSolaproChatThread() {
+  const thread = document.getElementById('sp-chat-thread');
+  if (!thread) return;
+  thread.innerHTML = spChatHistory.map(m => {
+    const isUser = m.role === 'user';
+    return `
+      <div style="display:flex;justify-content:${isUser ? 'flex-start' : 'flex-end'};">
+        <div style="max-width:85%;background:${isUser ? 'var(--bg-input)' : 'var(--blue)'};color:${isUser ? 'var(--txt)' : '#fff'};
+                    border:1px solid ${isUser ? 'var(--border)' : 'var(--blue)'};padding:10px 12px;border-radius:12px;
+                    font-size:13.5px;line-height:1.8;white-space:pre-wrap;">${escapeHtml(m.content)}</div>
+      </div>`;
+  }).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function addSolaproChatMessage(role, content) {
+  spChatHistory.push({ role, content });
+  renderSolaproChatThread();
+}
+
+async function generateSolaproAIPlan() {
+  const btn = document.getElementById('sp-ai-btn');
+  if (!state.calories) { showToast('❌ أدخل بيانات الزيارة أولاً (الوزن والطول)'); return; }
+
+  updateSolaproMix(); // ensure latest numbers
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ جارٍ إنشاء الخطة...';
+
+  const payload = buildSolaproAIContext();
+
+  try {
+    const res = await fetch('/api/solapro-plan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('فشل الاتصال بالخادم (' + res.status + ')');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    spChatHistory = []; // خطة جديدة = محادثة جديدة
+    addSolaproChatMessage('assistant', data.plan);
+    document.getElementById('sp-chat-inputRow').style.display = 'flex';
+  } catch (e) {
+    addSolaproChatMessage('assistant', '❌ تعذّر إنشاء الخطة: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔄 إنشاء خطة جديدة';
+}
+
+async function sendSolaproChatMessage() {
+  const input = document.getElementById('sp-chat-input');
+  const sendBtn = document.getElementById('sp-chat-send-btn');
+  const text = input.value.trim();
+  if (!text) return;
+  if (!state.calories) { showToast('❌ أدخل بيانات الزيارة أولاً'); return; }
+
+  addSolaproChatMessage('user', text);
+  input.value = '';
+  input.disabled = true;
+  sendBtn.disabled = true;
+  sendBtn.textContent = '...';
+
+  const payload = {
+    context: buildSolaproAIContext(),
+    history: spChatHistory.slice(0, -1),
+    message: text,
+  };
+
+  try {
+    const res = await fetch('/api/solapro-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('فشل الاتصال بالخادم (' + res.status + ')');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    addSolaproChatMessage('assistant', data.reply);
+  } catch (e) {
+    addSolaproChatMessage('assistant', '❌ حصل خطأ: ' + e.message);
+  }
+
+  input.disabled = false;
+  sendBtn.disabled = false;
+  sendBtn.textContent = 'إرسال';
+  input.focus();
+}
+
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : str;
+  return d.innerHTML;
+}
+
+
 function renderLabTable() {
   const tbody = document.getElementById('lab-tbody');
   if (!tbody) return;
@@ -2268,6 +2600,7 @@ window.addEventListener('fb-ready', () => {
       `;
     }
     showToast(`✅ مرحباً ${user.name}`);
+    subscribeNotifications(user);
   } catch(e) {
     sessionStorage.removeItem('nutriped_session');
     window.location.href = 'index.html';
@@ -2278,6 +2611,74 @@ function doLogout() {
   if (!confirm('هل تريد تسجيل الخروج؟')) return;
   sessionStorage.removeItem('nutriped_session');
   window.location.href = 'index.html';
+}
+
+// ══════════════════════════════════════════════════════════════
+// NOTIFICATIONS (sent by admin, shown live in the employee app)
+// ══════════════════════════════════════════════════════════════
+let _notifList      = [];
+let _notifFirstLoad = true;
+let _notifUserId    = null;
+
+function subscribeNotifications(user) {
+  if (!window._db || !window._fb || !window._fb.onSnapshot) return;
+  _notifUserId = user.id;
+  const { collection, query, orderBy, limit, onSnapshot } = window._fb;
+  try {
+    const q = query(collection(window._db, 'notifications'), orderBy('createdAt', 'desc'), limit(30));
+    onSnapshot(q, (snap) => {
+      const all  = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const mine = all.filter(n => n.target === 'all' || n.target === user.id);
+      const isFirst = _notifFirstLoad;
+      _notifFirstLoad = false;
+
+      if (!isFirst) {
+        const prevIds = new Set(_notifList.map(n => n.id));
+        mine.filter(n => !prevIds.has(n.id)).forEach(n => showToast(`🔔 ${n.title || 'إشعار جديد'}`));
+      }
+
+      _notifList = mine;
+      updateNotifBadge();
+    }, (err) => { console.error('notifications listener error', err); });
+  } catch (e) { console.error(e); }
+}
+
+function getLastSeenNotifAt() {
+  const v = localStorage.getItem('nutriped_notif_seen_' + _notifUserId);
+  return v ? parseInt(v, 10) : 0;
+}
+
+function updateNotifBadge() {
+  const lastSeen = getLastSeenNotifAt();
+  const unread = _notifList.filter(n => {
+    const t = n.createdAt && n.createdAt.toMillis ? n.createdAt.toMillis() : 0;
+    return t > lastSeen;
+  }).length;
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  if (unread > 0) { badge.style.display = 'inline-block'; badge.textContent = unread > 9 ? '9+' : unread; }
+  else            { badge.style.display = 'none'; }
+}
+
+function openNotifications() {
+  const list = document.getElementById('notif-list');
+  if (!_notifList.length) {
+    list.innerHTML = '<div style="color:var(--txt-2);text-align:center;padding:20px;">لا توجد إشعارات</div>';
+  } else {
+    list.innerHTML = _notifList.map(n => {
+      const t = n.createdAt && n.createdAt.toDate ? n.createdAt.toDate() : null;
+      const timeStr = t ? t.toLocaleString('ar-EG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+      return `
+        <div style="padding:12px;border-bottom:1px solid var(--border);">
+          <div style="font-weight:700;font-size:13.5px;margin-bottom:4px;">${escapeHtml(n.title || 'إشعار')}</div>
+          <div style="font-size:13px;color:var(--txt-2);line-height:1.7;white-space:pre-wrap;">${escapeHtml(n.message || '')}</div>
+          <div style="font-size:11px;color:var(--txt-3);margin-top:6px;">${timeStr}${n.sentBy && n.sentBy.name ? ' · ' + escapeHtml(n.sentBy.name) : ''}</div>
+        </div>`;
+    }).join('');
+  }
+  openModal('notifModal');
+  localStorage.setItem('nutriped_notif_seen_' + _notifUserId, String(Date.now()));
+  updateNotifBadge();
 }
 
 // Init date
@@ -2300,5 +2701,12 @@ renderLabTable();
     </div>
   </div>
 </div>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+</script>
 </body>
 </html>

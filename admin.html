@@ -5,11 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NutriPed Admin — لوحة الإدارة</title>
 
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1B3A6B">
+<link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NutriPed">
+
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
   import { getFirestore, collection, doc, setDoc, getDoc, getDocs, deleteDoc,
-           addDoc, query, where, orderBy, serverTimestamp, getCountFromServer }
+           addDoc, query, where, orderBy, serverTimestamp, getCountFromServer, limit }
     from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
   // ─── REPLACE WITH YOUR CONFIG ───────────────────────────────────
@@ -27,7 +37,7 @@
   const db  = getFirestore(app);
   window._db = db;
   window._fb = { collection, doc, setDoc, getDoc, getDocs, deleteDoc,
-                 addDoc, query, where, orderBy, serverTimestamp, getCountFromServer };
+                 addDoc, query, where, orderBy, serverTimestamp, getCountFromServer, limit };
   window.dispatchEvent(new Event('fb-ready'));
 </script>
 
@@ -475,6 +485,7 @@ textarea { resize:vertical; min-height:80px; }
       <button class="nb active" onclick="showPage('overview',this)"><span class="ni">📊</span><span>نظرة عامة</span></button>
       <button class="nb" onclick="showPage('patients',this)"><span class="ni">👶</span><span>ملفات الأطفال</span><span class="badge" id="sb-count">—</span></button>
       <button class="nb" onclick="showPage('followups',this)"><span class="ni">📈</span><span>الزيارات</span><span class="badge" id="sb-fu-count">—</span></button>
+      <button class="nb" onclick="showPage('notifications',this)"><span class="ni">🔔</span><span>الإشعارات</span></button>
     </div>
 
     <div class="sb-section">
@@ -818,6 +829,46 @@ textarea { resize:vertical; min-height:80px; }
 
 
       <!-- ══ PAGE: ADMINS ══ -->
+      <div class="page" id="page-notifications">
+        <div class="page-header">
+          <div>
+            <div class="page-title">الإشعارات</div>
+            <div class="page-sub">إرسال إشعار يظهر فورًا للموظفين داخل التطبيق</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><span class="ct">✉️ إشعار جديد</span></div>
+          <div class="cb">
+            <div class="fr">
+              <div class="fg"><label>العنوان *</label><input type="text" id="nt-title" placeholder="مثال: تذكير بمتابعة الزيارات"></div>
+              <div class="fg">
+                <label>المستلم</label>
+                <select id="nt-target">
+                  <option value="all">كل الموظفين</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg"><label>نص الرسالة *</label><textarea id="nt-message" rows="3" placeholder="اكتب الرسالة هنا..."></textarea></div>
+            <button class="btn btn-primary" onclick="sendNotification()" id="sendNotifBtn">📤 إرسال الإشعار</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch"><span class="ct">🕘 آخر الإشعارات المُرسلة</span></div>
+          <div class="cb">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>العنوان</th><th>الرسالة</th><th>المستلم</th><th>التاريخ</th></tr></thead>
+                <tbody id="notif-sent-tbody">
+                  <tr><td colspan="4" style="text-align:center;padding:30px;color:var(--txt-3);">جارٍ التحميل...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div><!-- /notifications -->
+
       <div class="page" id="page-admins">
         <div class="page-header">
           <div>
@@ -900,6 +951,7 @@ textarea { resize:vertical; min-height:80px; }
   <button class="bn active" onclick="showPage('overview',this)" data-page="overview"><span class="bni">📊</span><span>عام</span></button>
   <button class="bn" onclick="showPage('patients',this)" data-page="patients"><span class="bni">👶</span><span>الأطفال</span></button>
   <button class="bn" onclick="showPage('followups',this)" data-page="followups"><span class="bni">📈</span><span>الزيارات</span></button>
+  <button class="bn" onclick="showPage('notifications',this)" data-page="notifications"><span class="bni">🔔</span><span>إشعارات</span></button>
   <button class="bn" onclick="showPage('admins',this)" data-page="admins"><span class="bni">👥</span><span>مستخدمين</span></button>
   <button class="bn" onclick="showPage('settings',this)" data-page="settings"><span class="bni">⚙️</span><span>إعدادات</span></button>
 </nav>
@@ -920,6 +972,7 @@ const pageTitles = {
   overview:  'نظرة عامة',
   patients:  'ملفات الأطفال',
   followups: 'سجل الزيارات',
+  notifications: 'الإشعارات',
   admins:    'إدارة المستخدمين',
   settings:  'إعدادات النظام',
   backup:    'النسخ الاحتياطي',
@@ -938,6 +991,7 @@ function showPage(id, el) {
   document.getElementById('topbar-title').innerHTML = `${pageTitles[id]||id} <span>/ Admin Panel</span>`;
   closeSidebar();
   if (id === 'admins') loadAdmins();
+  if (id === 'notifications') { loadNotifTargets(); loadSentNotifications(); }
 }
 
 function toggleSidebar() {
@@ -1589,6 +1643,84 @@ function doLogout() {
 // ══════════════════════════════════════════════════════════════
 // ADMINS MANAGEMENT
 // ══════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════
+async function loadNotifTargets() {
+  if (!window._db) return;
+  const sel = document.getElementById('nt-target');
+  if (!sel) return;
+  try {
+    const { getDocs, collection } = window._fb;
+    const snap = await getDocs(collection(window._db, 'Admins'));
+    const employees = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    sel.innerHTML = '<option value="all">كل الموظفين</option>' +
+      employees.map(e => `<option value="${e.id}">${(e.name || e.username || e.id)}</option>`).join('');
+  } catch (e) {
+    showToast('❌ خطأ في تحميل الموظفين: ' + e.message);
+  }
+}
+
+async function sendNotification() {
+  const title   = document.getElementById('nt-title').value.trim();
+  const message = document.getElementById('nt-message').value.trim();
+  const target  = document.getElementById('nt-target').value;
+
+  if (!title || !message) { showToast('⚠️ أكمل العنوان والرسالة'); return; }
+
+  const btn = document.getElementById('sendNotifBtn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+  try {
+    const { addDoc, collection, serverTimestamp } = window._fb;
+    await addDoc(collection(window._db, 'notifications'), {
+      title, message, target,
+      createdAt: serverTimestamp(),
+      sentBy: currentAdmin ? { id: currentAdmin.id || null, name: currentAdmin.name, username: currentAdmin.username } : null,
+    });
+    document.getElementById('nt-title').value = '';
+    document.getElementById('nt-message').value = '';
+    showToast('✅ تم إرسال الإشعار');
+    await loadSentNotifications();
+  } catch (e) {
+    showToast('❌ خطأ: ' + e.message);
+  }
+  btn.disabled = false; btn.innerHTML = '📤 إرسال الإشعار';
+}
+
+async function loadSentNotifications() {
+  const tbody = document.getElementById('notif-sent-tbody');
+  if (!tbody || !window._db) return;
+  try {
+    const { getDocs, collection, query, orderBy, limit } = window._fb;
+    const q = query(collection(window._db, 'notifications'), orderBy('createdAt', 'desc'), limit(20));
+    const snap = await getDocs(q);
+    const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--txt-3);">لا توجد إشعارات بعد</td></tr>';
+      return;
+    }
+    const targetSel = document.getElementById('nt-target');
+    const targetName = (id) => {
+      if (id === 'all') return 'الكل';
+      const opt = targetSel ? targetSel.querySelector(`option[value="${id}"]`) : null;
+      return opt ? opt.textContent : id;
+    };
+    tbody.innerHTML = items.map(n => {
+      const t = n.createdAt && n.createdAt.toDate ? n.createdAt.toDate() : null;
+      const timeStr = t ? t.toLocaleString('ar-EG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '—';
+      return `<tr>
+        <td style="font-weight:600;">${n.title || '—'}</td>
+        <td style="max-width:260px;white-space:normal;font-size:12.5px;color:var(--txt-2);">${n.message || ''}</td>
+        <td>${targetName(n.target)}</td>
+        <td style="font-family:var(--mono);font-size:11.5px;color:var(--txt-3);">${timeStr}</td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--red);">خطأ: ${e.message}</td></tr>`;
+  }
+}
+
 async function loadAdmins() {
   if (!window._db) return;
   const {getDocs, collection} = window._fb;
@@ -1693,6 +1825,13 @@ window.addEventListener('fb-ready', () => {
     window.location.href = 'index.html';
   }
 });
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

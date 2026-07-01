@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>NutriPed — تسجيل الدخول</title>
 
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1B3A6B">
+<link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NutriPed">
+
 <!-- Firebase -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
@@ -326,6 +336,13 @@ function resetBtn() {
   const btn = document.getElementById('login-btn');
   btn.innerHTML = '🔐 دخول';
   btn.disabled = false;
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
 }
 </script>
 </body>
