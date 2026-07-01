@@ -264,9 +264,15 @@ function renderChildSummary(ageMonths) {
 
   const f = latestFollowup;
   metricsBox.innerHTML = `
-    <div class="mc"><div class="mc-l">الوزن</div><div class="mc-v">${f.weight ?? '—'}</div></div>
-    <div class="mc"><div class="mc-l">الطول</div><div class="mc-v">${f.height ?? '—'}</div></div>
-    <div class="mc"><div class="mc-l">آخر زيارة</div><div class="mc-v" style="font-size:12px;">${f.date ?? '—'}</div></div>`;
+    <div class="mc"><div class="mc-l">الوزن</div><div class="mc-v">${f.weight ?? '—'}<span style="font-size:11px;">كجم</span></div></div>
+    <div class="mc"><div class="mc-l">الطول</div><div class="mc-v">${f.height ?? '—'}<span style="font-size:11px;">سم</span></div></div>
+    <div class="mc"><div class="mc-l">آخر زيارة</div><div class="mc-v" style="font-size:12px;">${f.date ?? '—'}</div></div>
+    <div class="mc"><div class="mc-l">BMI</div><div class="mc-v">${f.bmi ?? '—'}</div></div>
+    <div class="mc"><div class="mc-l">السعرات/يوم</div><div class="mc-v">${f.calories ?? '—'}<span style="font-size:11px;"> كيلوكالوري</span></div></div>
+    <div class="mc"><div class="mc-l">البروتين اليومي</div><div class="mc-v">${f.protein ?? '—'}<span style="font-size:11px;"> جرام</span></div></div>
+    <div class="mc"><div class="mc-l">السوائل اليومية</div><div class="mc-v">${f.fluids ?? '—'}<span style="font-size:11px;"> مل</span></div></div>
+    <div class="mc"><div class="mc-l">نسبة الطول للعمر H/A%</div><div class="mc-v">${f.ha ?? '—'}${f.ha ? '%' : ''}</div></div>
+    <div class="mc"><div class="mc-l">نسبة الوزن للطول W/H%</div><div class="mc-v">${f.wh ?? '—'}${f.wh ? '%' : ''}</div></div>`;
 
   // نفس أولوية عرض الحالة المستخدمة عند الموظف: هزال > تقزم > BMI
   const wh = f.wh || 0, ha = f.ha || 0, bmi = f.bmi || 0;
@@ -294,13 +300,26 @@ function buildParentAIContext() {
   const totalCalories = f.calories || 0;
   const totalProtein  = f.protein  || 0;
 
-  // نفس منطق سولابرو الافتراضي (50%) المستخدم في تطبيق الموظف
+  // نسبة سولابرو دي بيحددها الموظف بس وقت الزيارة (مش قابلة للتعديل من ولي الأمر).
+  // بنقرأها من آخر زيارة محفوظة؛ لو زيارة قديمة اتسجلت قبل إضافة الحقل ده، بنرجع لـ 50% كقيمة افتراضية بس.
   const SOLAPRO_SCOOP = { kcal: 226/5, protein: 6.74/5, sugar: 6.7/5 };
-  const solaproKcal    = totalCalories * 0.5;
-  const solaproScoops  = Math.round((solaproKcal / SOLAPRO_SCOOP.kcal) * 2) / 2;
-  const solaproKcalR   = solaproScoops * SOLAPRO_SCOOP.kcal;
-  const solaproProtein = solaproScoops * SOLAPRO_SCOOP.protein;
-  const solaproSugar   = solaproScoops * SOLAPRO_SCOOP.sugar;
+  const hasEmployeeValue = f.solaproPct != null && f.solaproScoops != null;
+
+  let solaproPct, solaproScoops, solaproKcalR, solaproProtein, solaproSugar;
+  if (hasEmployeeValue) {
+    solaproPct     = f.solaproPct;
+    solaproScoops  = f.solaproScoops;
+    solaproKcalR   = f.solaproKcal ?? (solaproScoops * SOLAPRO_SCOOP.kcal);
+    solaproProtein = f.solaproProtein ?? (solaproScoops * SOLAPRO_SCOOP.protein);
+    solaproSugar   = f.solaproSugar ?? (solaproScoops * SOLAPRO_SCOOP.sugar);
+  } else {
+    solaproPct     = 50;
+    solaproKcalR   = totalCalories * 0.5;
+    solaproScoops  = Math.round((solaproKcalR / SOLAPRO_SCOOP.kcal) * 2) / 2;
+    solaproKcalR   = solaproScoops * SOLAPRO_SCOOP.kcal;
+    solaproProtein = solaproScoops * SOLAPRO_SCOOP.protein;
+    solaproSugar   = solaproScoops * SOLAPRO_SCOOP.sugar;
+  }
 
   return {
     ageMonths, gender: currentChild.gender,
@@ -309,14 +328,14 @@ function buildParentAIContext() {
     allergiesOrMeds: f.meds || '',
     feeding: f.feeding || '',
     totalCalories, totalProtein,
-    solaproPct: 50,
+    solaproPct,
     solaproScoops, solaproKcal: Math.round(solaproKcalR),
-    solaproProtein: solaproProtein.toFixed(1), solaproSugar: solaproSugar.toFixed(1),
-    foodCalories: Math.round(totalCalories - solaproKcalR),
-    foodProtein: Math.max(0, totalProtein - solaproProtein).toFixed(1),
-    actualFoodIntake: null,
-    isStunted: currentChild._isStunted || false,
-    stuntSeverity: currentChild._stuntSeverity || null,
+    solaproProtein: (+solaproProtein).toFixed(1), solaproSugar: (+solaproSugar).toFixed(1),
+    foodCalories: f.foodCalories ?? Math.round(totalCalories - solaproKcalR),
+    foodProtein: f.foodProtein ?? Math.max(0, totalProtein - solaproProtein).toFixed(1),
+    actualFoodIntake: f.foodActualIntake ?? null,
+    isStunted: f.isStunted ?? (currentChild._isStunted || false),
+    stuntSeverity: f.stuntSeverity ?? (currentChild._stuntSeverity || null),
   };
 }
 

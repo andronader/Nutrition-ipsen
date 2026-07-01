@@ -966,6 +966,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
                   </div>
                 </div>
                 <button class="btn btn-ghost" style="width:100%;margin-top:10px;" onclick="copyParentAccess()">📋 نسخ الكود وكلمة المرور</button>
+                <button class="btn btn-primary" style="width:100%;margin-top:8px;background:#25D366;border-color:#25D366;" onclick="shareParentAccessWhatsApp()">📲 إرسال عبر واتساب لولي الأمر</button>
                 <button class="btn btn-ghost" style="width:100%;margin-top:6px;" onclick="shareParentAccessWhatsApp()">📤 إرسال عبر واتساب</button>
               </div>
               <button class="btn btn-primary" id="pa-generate-btn" style="width:100%;margin-top:8px;" onclick="generateParentAccess()">🔑 توليد كود دخول جديد</button>
@@ -1775,8 +1776,20 @@ function copyParentAccess() {
 function shareParentAccessWhatsApp() {
   const code = document.getElementById('pa-code').textContent;
   const pass = document.getElementById('pa-password').textContent;
+  const rawPhone = (state.childData?.phone || '').replace(/[^\d]/g, ''); // شيل أي رموز غير أرقام
+
+  if (!rawPhone) {
+    showToast('⚠️ لا يوجد رقم هاتف مسجل لولي الأمر — أضف الرقم في بيانات الطفل أولاً');
+    return;
+  }
+
+  // تحويل الرقم لصيغة دولية مصرية (20) لرابط واتساب
+  let intlPhone = rawPhone;
+  if (intlPhone.startsWith('0')) intlPhone = '20' + intlPhone.slice(1);      // 01xxxxxxxxx -> 201xxxxxxxxx
+  else if (!intlPhone.startsWith('20')) intlPhone = '20' + intlPhone;        // 1xxxxxxxxx  -> 201xxxxxxxxx
+
   const text = encodeURIComponent(`كود الدخول لمتابعة بيانات طفلك على NutriPed:\nالكود: ${code}\nكلمة المرور: ${pass}\nرابط المتابعة: ${window.location.origin}/parent.html`);
-  window.open(`https://wa.me/?text=${text}`, '_blank');
+  window.open(`https://wa.me/${intlPhone}?text=${text}`, '_blank');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1854,6 +1867,19 @@ async function saveFollowup() {
     notes:      document.getElementById('p-notes').value     || '',
     labResults: {...state.labResults},
     activity:   state.activity,
+    // بيانات سولابرو (بيحددها الموظف فقط) — بتتسجل هنا عشان بوابة ولي الأمر تقراها بدل ما تفترض نسبة ثابتة
+    solaproPct:        state.solaproPct        ?? null,
+    solaproScoops:     state.solaproScoops     ?? null,
+    solaproKcal:        Math.round(state.solaproKcal || 0),
+    solaproProtein:    state.solaproProtein    ?? null,
+    solaproCarbs:      state.solaproCarbs      ?? null,
+    solaproSugar:      state.solaproSugar      ?? null,
+    solaproFat:        state.solaproFat        ?? null,
+    foodCalories:      Math.round(state.foodCalories || 0),
+    foodProtein:       state.foodProtein       ?? null,
+    foodActualIntake:  state.foodActualIntake  ?? null,
+    isStunted:         state.isStunted || false,
+    stuntSeverity:     state.stuntSeverity || null,
     savedAt:    serverTimestamp(),
     recordedBy: _su2 ? { id: _su2.id, name: _su2.name || _su2.username, username: _su2.username } : null,
   };
