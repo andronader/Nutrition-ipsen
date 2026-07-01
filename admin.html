@@ -175,9 +175,9 @@ body { font-family:var(--sans); background:var(--bg); color:var(--txt); font-siz
 .page-sub   { font-size:13px; color:var(--txt-2); margin-top:2px; }
 
 /* ── Cards / Grid ── */
-.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
-.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.g2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; }
+.g3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.g4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
 
 .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
 .ch   { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -252,7 +252,7 @@ body { font-family:var(--sans); background:var(--bg); color:var(--txt); font-siz
 }
 
 /* ── Form ── */
-.fg { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.fg { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; min-width:0; }
 .fg:last-child { margin-bottom:0; }
 label { font-size:12px; font-weight:500; color:var(--txt-2); }
 input[type="text"], input[type="number"], input[type="date"],
@@ -266,7 +266,7 @@ input:focus, select:focus, textarea:focus {
   border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow);
 }
 textarea { resize:vertical; min-height:80px; }
-.fr { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fr { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
 .divider { height:1px; background:var(--border); margin:10px 0; }
 
 /* ── Modal ── */
@@ -367,7 +367,7 @@ textarea { resize:vertical; min-height:80px; }
   .sidebar.open { right:0; }
   .content { padding-bottom:calc(var(--bnav-h) + 12px); }
   .g2,.g3,.g4 { grid-template-columns:1fr; }
-  .fr { grid-template-columns:1fr 1fr; }
+  .fr { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
   .stat { padding:12px 14px; }
   .stat-val { font-size:22px; }
   #toast { bottom:calc(var(--bnav-h) + 10px); }
@@ -393,7 +393,7 @@ textarea { resize:vertical; min-height:80px; }
       <button class="mc" onclick="closeModal('childDetailModal')">✕</button>
     </div>
     <!-- Info grid -->
-    <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="cdm-info"></div>
+    <div style="padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;" id="cdm-info"></div>
     <!-- Followups table -->
     <div style="padding:0 16px 6px;">
       <div style="font-weight:600;font-size:13px;color:var(--txt-2);margin-bottom:8px;">📈 سجل الزيارات — اضغط على أي زيارة لعرض تفاصيلها</div>
@@ -421,7 +421,7 @@ textarea { resize:vertical; min-height:80px; }
       <span class="mt" id="fdm-title">تفاصيل الزيارة</span>
       <button class="mc" onclick="closeModal('followupDetailModal')">✕</button>
     </div>
-    <div style="padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;max-height:65vh;overflow-y:auto;" id="fdm-body"></div>
+    <div style="padding:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;max-height:65vh;overflow-y:auto;" id="fdm-body"></div>
     <div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;">
       <button class="btn btn-ghost" onclick="closeModal('followupDetailModal')">إغلاق</button>
     </div>
@@ -727,7 +727,7 @@ textarea { resize:vertical; min-height:80px; }
         <div class="card">
           <div class="ch"><span class="ct">🔐 الوصول والصلاحيات</span></div>
           <div class="cb">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;">
               <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
                 <div style="font-weight:600;margin-bottom:4px;color:var(--navy);">👤 موظف (User)</div>
                 <div style="font-size:12px;color:var(--txt-2);">
@@ -897,7 +897,7 @@ textarea { resize:vertical; min-height:80px; }
         <div class="card" style="border-color:rgba(27,58,107,0.2);background:rgba(27,58,107,0.03);">
           <div class="ch"><span class="ct">ℹ️ الصلاحيات</span></div>
           <div class="cb">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;">
               <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px;">
                 <div style="font-weight:600;margin-bottom:6px;color:var(--navy);">🔐 superadmin</div>
                 <div style="font-size:12px;color:var(--txt-2);line-height:1.8;">
@@ -1306,7 +1306,7 @@ function openFollowupDetail(index) {
     (r.labResults && Object.keys(r.labResults).length ? `
     <div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
       <div style="font-size:11px;color:var(--txt-3);margin-bottom:8px;">🧪 التحاليل المخبرية</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;">
         ${Object.entries(r.labResults).map(([k,v]) => `
           <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:12px;">
             <span style="color:var(--txt-2);">${k}</span><strong>${v}</strong>
@@ -1398,7 +1398,7 @@ function openFollowupDetailFromList(index) {
     (r.labResults && Object.keys(r.labResults).length ? `
     <div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
       <div style="font-size:11px;color:var(--txt-3);margin-bottom:8px;">🧪 التحاليل المخبرية</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;">
         ${Object.entries(r.labResults).map(([k,v]) => `
           <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:12px;">
             <span style="color:var(--txt-2);">${k}</span><strong>${v}</strong>

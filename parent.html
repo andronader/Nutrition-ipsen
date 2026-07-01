@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>NutriPed — متابعة ولي الأمر</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1B3A6B">
+<link rel="icon" href="/icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NutriPed">
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+  import { getFirestore, collection, query, where, orderBy, getDocs }
+    from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+  const firebaseConfig = {
+    apiKey:            "AIzaSyA2Hmm9PWCR2EBpWwopCwACS9iRd7kuCMM",
+    authDomain:        "nutrition--pediatric.firebaseapp.com",
+    projectId:         "nutrition--pediatric",
+    storageBucket:     "nutrition--pediatric.firebasestorage.app",
+    messagingSenderId: "230203820487",
+    appId:             "1:230203820487:web:8d8c3383de4bd009e3b1e2"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+  window._db = db;
+  window._fb = { collection, query, where, orderBy, getDocs };
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap">
+
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --navy: #1B3A6B; --navy-dark:#142E58; --blue:#2776B8; --sky:#3E8FD4;
+  --green:#2E7D32; --amber:#B8860B; --red:#C62828;
+  --bg:#F4F7FB; --card:#fff; --border:#E1E8F0; --txt:#152238; --txt-2:#5B6B85; --txt-3:#9AA8BE;
+  --r-sm:10px; --r-md:14px; --r-lg:20px;
+  --mono: 'Courier New', monospace;
+}
+html, body {
+  height:100%; font-family:'IBM Plex Sans Arabic', system-ui, sans-serif;
+  background: var(--bg); color:var(--txt);
+}
+.screen { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.login-card {
+  background:#fff; border-radius:var(--r-lg); padding:36px 30px; width:380px; max-width:100%;
+  box-shadow:0 20px 60px rgba(0,0,0,0.12);
+}
+.login-card .app-title { font-size:20px; font-weight:700; color:var(--navy); text-align:center; margin-bottom:2px; }
+.login-card .app-sub   { font-size:12.5px; color:var(--txt-3); text-align:center; margin-bottom:24px; }
+.field { margin-bottom:14px; }
+.field label { display:block; font-size:12px; font-weight:600; color:var(--txt-2); margin-bottom:6px; }
+.field input {
+  width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--r-sm);
+  font-size:16px; font-family:var(--mono); letter-spacing:2px; text-align:center;
+  background:#F7FAFD; color:var(--txt); outline:none;
+}
+.field input:focus { border-color:var(--sky); background:#fff; }
+.btn {
+  width:100%; padding:13px; border:none; border-radius:var(--r-sm); font-size:14.5px; font-weight:600;
+  cursor:pointer; font-family:inherit;
+}
+.btn-primary { background:var(--navy); color:#fff; }
+.btn-primary:disabled { background:#B7C4DA; cursor:not-allowed; }
+.btn-ghost { background:var(--bg); color:var(--navy); border:1px solid var(--border); margin-top:8px; }
+.error-box {
+  background:#FFEBEE; border:1px solid #EF9A9A; border-radius:var(--r-sm); padding:10px 14px;
+  font-size:13px; color:var(--red); margin-bottom:14px; display:none; text-align:center;
+}
+
+/* Dashboard */
+#dash { display:none; max-width:640px; margin:0 auto; padding:16px 14px 40px; }
+.topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.topbar .t { font-size:16px; font-weight:700; color:var(--navy); }
+.logout-btn { background:none; border:none; color:var(--txt-3); font-size:13px; cursor:pointer; }
+
+.card { background:#fff; border:1px solid var(--border); border-radius:var(--r-md); padding:16px; margin-bottom:14px; }
+.card-h { font-size:13.5px; font-weight:700; color:var(--navy); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+
+.child-name { font-size:18px; font-weight:700; color:var(--txt); }
+.child-meta { font-size:12.5px; color:var(--txt-2); margin-top:2px; }
+
+.mgrid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.mc { background:var(--bg); border-radius:var(--r-sm); padding:10px; text-align:center; }
+.mc-l { font-size:11px; color:var(--txt-3); }
+.mc-v { font-size:16px; font-weight:700; color:var(--navy); font-family:var(--mono); margin-top:2px; }
+
+.status-badge { display:inline-block; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:600; margin-top:10px; }
+.s-ok { background:#E8F5E9; color:var(--green); }
+.s-warn { background:#FFF8E1; color:var(--amber); }
+.s-danger { background:#FFEBEE; color:var(--red); }
+
+.chat-thread { display:flex; flex-direction:column; gap:10px; max-height:420px; overflow-y:auto; margin-bottom:10px; }
+.bubble { max-width:85%; padding:10px 12px; border-radius:12px; font-size:13.5px; line-height:1.8; white-space:pre-wrap; }
+.bubble.user { align-self:flex-start; background:var(--bg); border:1px solid var(--border); color:var(--txt); }
+.bubble.ai   { align-self:flex-end; background:var(--blue); color:#fff; }
+
+.chat-row { display:flex; gap:8px; }
+.chat-row input {
+  flex:1; padding:11px 14px; border:1.5px solid var(--border); border-radius:var(--r-sm);
+  font-size:14px; font-family:inherit; background:var(--bg); outline:none;
+}
+.chat-row input:focus { border-color:var(--sky); background:#fff; }
+.chat-row button { padding:0 18px; border:none; border-radius:var(--r-sm); background:var(--navy); color:#fff; font-weight:600; cursor:pointer; }
+.chat-row button:disabled { background:#B7C4DA; }
+
+.empty-note { font-size:12.5px; color:var(--txt-3); text-align:center; padding:14px; }
+</style>
+</head>
+<body>
+
+<div class="screen" id="loginScreen">
+  <div class="login-card">
+    <div class="app-title">👨‍👩‍👧 متابعة ولي الأمر</div>
+    <div class="app-sub">استخدم الكود وكلمة المرور اللي اداهالك المختص</div>
+    <div class="error-box" id="errorBox"></div>
+    <div class="field">
+      <label>الكود</label>
+      <input type="text" id="inp-code" placeholder="000000" maxlength="10" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>كلمة المرور</label>
+      <input type="text" id="inp-pass" placeholder="0000" maxlength="10" inputmode="numeric">
+    </div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doParentLogin()">دخول</button>
+  </div>
+</div>
+
+<div id="dash">
+  <div class="topbar">
+    <div class="t">🌱 متابعة طفلك</div>
+    <button class="logout-btn" onclick="doParentLogout()">تسجيل الخروج</button>
+  </div>
+
+  <div class="card" id="child-summary-card">
+    <div class="child-name" id="cs-name">—</div>
+    <div class="child-meta" id="cs-meta">—</div>
+    <div id="cs-status"></div>
+    <div class="mgrid" id="cs-metrics"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-h">🌱 خطة نمو طفلك وتغذيته</div>
+    <div id="chat-thread" class="chat-thread"></div>
+    <div id="chat-empty" class="empty-note">اضغطي "ابدئي المحادثة" عشان تشوفي خطة تغذية طفلك</div>
+    <button class="btn btn-primary" id="startChatBtn" onclick="startParentChat()" style="margin-bottom:10px;">💬 ابدئي المحادثة مع الذكاء الاصطناعي</button>
+    <div class="chat-row" id="chatInputRow" style="display:none;">
+      <input type="text" id="chat-input" placeholder="اسألي أي سؤال عن خطة طفلك..." onkeydown="if(event.key==='Enter'){event.preventDefault();sendParentChatMessage();}">
+      <button id="chat-send-btn" onclick="sendParentChatMessage()">إرسال</button>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+let fbReady = false;
+window.addEventListener('fb-ready', () => { fbReady = true; });
+
+let currentChild = null;      // { id, ...data }
+let latestFollowup = null;    // آخر زيارة محفوظة
+let chatHistory = [];
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+
+async function doParentLogin() {
+  hideError();
+  const code = document.getElementById('inp-code').value.trim();
+  const pass = document.getElementById('inp-pass').value.trim();
+  if (!code || !pass) { showError('من فضلك أدخلي الكود وكلمة المرور'); return; }
+  if (!fbReady) { showError('جارٍ الاتصال، حاولي تاني بعد لحظة'); return; }
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '...';
+
+  try {
+    const { collection, query, where, getDocs } = window._fb;
+    const q = query(collection(window._db, 'children'), where('parentCode', '==', code));
+    const snap = await getDocs(q);
+
+    let match = null;
+    snap.forEach(d => {
+      const data = d.data();
+      if (data.parentPassword === pass) match = { id: d.id, ...data };
+    });
+
+    if (!match) {
+      showError('الكود أو كلمة المرور غير صحيحة');
+      btn.disabled = false; btn.textContent = 'دخول';
+      return;
+    }
+
+    currentChild = match;
+    sessionStorage.setItem('nutriped_parent_session', JSON.stringify({ code, pass }));
+    await loadParentDashboard();
+  } catch (e) {
+    showError('حصل خطأ: ' + e.message);
+  }
+  btn.disabled = false; btn.textContent = 'دخول';
+}
+
+function doParentLogout() {
+  sessionStorage.removeItem('nutriped_parent_session');
+  currentChild = null; latestFollowup = null; chatHistory = [];
+  document.getElementById('dash').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('inp-code').value = '';
+  document.getElementById('inp-pass').value = '';
+}
+
+function calcAgeMonths(dob) {
+  if (!dob) return 0;
+  const d = new Date(dob), now = new Date();
+  return Math.max(0, (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth()));
+}
+
+async function loadParentDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dash').style.display = 'block';
+
+  const ageMonths = calcAgeMonths(currentChild.dob);
+  document.getElementById('cs-name').textContent = currentChild.name || '—';
+  document.getElementById('cs-meta').textContent = `${ageMonths} شهر · ${currentChild.gender === 'M' ? 'ذكر' : 'أنثى'}`;
+
+  // آخر زيارة
+  try {
+    const { collection, query, where, orderBy, getDocs } = window._fb;
+    const q = query(collection(window._db, 'followups'), where('childId', '==', currentChild.id), orderBy('date', 'asc'));
+    const snap = await getDocs(q);
+    const all = [];
+    snap.forEach(d => all.push({ id: d.id, ...d.data() }));
+    latestFollowup = all.length ? all[all.length - 1] : null;
+  } catch (e) { console.warn(e); }
+
+  renderChildSummary(ageMonths);
+}
+
+function renderChildSummary(ageMonths) {
+  const metricsBox = document.getElementById('cs-metrics');
+  const statusBox  = document.getElementById('cs-status');
+
+  if (!latestFollowup) {
+    metricsBox.innerHTML = '';
+    statusBox.innerHTML = '<div class="empty-note">لسه معملتش زيارة متابعة لطفلك</div>';
+    return;
+  }
+
+  const f = latestFollowup;
+  metricsBox.innerHTML = `
+    <div class="mc"><div class="mc-l">الوزن</div><div class="mc-v">${f.weight ?? '—'}</div></div>
+    <div class="mc"><div class="mc-l">الطول</div><div class="mc-v">${f.height ?? '—'}</div></div>
+    <div class="mc"><div class="mc-l">آخر زيارة</div><div class="mc-v" style="font-size:12px;">${f.date ?? '—'}</div></div>`;
+
+  // نفس أولوية عرض الحالة المستخدمة عند الموظف: هزال > تقزم > BMI
+  const wh = f.wh || 0, ha = f.ha || 0, bmi = f.bmi || 0;
+  const stuntedSev  = ha > 0 && ha < 85;
+  const stuntedMod  = ha > 0 && ha >= 85 && ha < 90;
+  const stuntedMild = ha > 0 && ha >= 90 && ha < 95;
+
+  let label = null, cls = 's-ok';
+  if (wh && wh < 70)            { label = 'يحتاج متابعة فورية 🚨'; cls = 's-danger'; }
+  else if (stuntedSev)          { label = 'تقزم شديد — يحتاج دعم نمو 🚨'; cls = 's-danger'; }
+  else if (wh && wh < 80)       { label = 'يحتاج تعديل الخطة ⚠️'; cls = 's-warn'; }
+  else if (stuntedMod)          { label = 'تقزم متوسط — دعم النمو أولوية ⚠️'; cls = 's-warn'; }
+  else if (stuntedMild)         { label = 'تقزم بسيط — تابعي منحنى الطول'; cls = 's-warn'; }
+  else if (bmi)                 { label = 'ضمن المتابعة الطبيعية ✅'; cls = 's-ok'; }
+
+  statusBox.innerHTML = label ? `<span class="status-badge ${cls}">${label}</span>` : '';
+  currentChild._isStunted = stuntedSev || stuntedMod || stuntedMild;
+  currentChild._stuntSeverity = stuntedSev ? 'severe' : stuntedMod ? 'moderate' : stuntedMild ? 'mild' : null;
+}
+
+// ── AI context (يعتمد على آخر زيارة محفوظة) ──
+function buildParentAIContext() {
+  const f = latestFollowup || {};
+  const ageMonths = calcAgeMonths(currentChild.dob);
+  const totalCalories = f.calories || 0;
+  const totalProtein  = f.protein  || 0;
+
+  // نفس منطق سولابرو الافتراضي (50%) المستخدم في تطبيق الموظف
+  const SOLAPRO_SCOOP = { kcal: 226/5, protein: 6.74/5, sugar: 6.7/5 };
+  const solaproKcal    = totalCalories * 0.5;
+  const solaproScoops  = Math.round((solaproKcal / SOLAPRO_SCOOP.kcal) * 2) / 2;
+  const solaproKcalR   = solaproScoops * SOLAPRO_SCOOP.kcal;
+  const solaproProtein = solaproScoops * SOLAPRO_SCOOP.protein;
+  const solaproSugar   = solaproScoops * SOLAPRO_SCOOP.sugar;
+
+  return {
+    ageMonths, gender: currentChild.gender,
+    weight: f.weight, height: f.height,
+    diagnosis: f.diagnosis || currentChild.diagnosis || '',
+    allergiesOrMeds: f.meds || '',
+    feeding: f.feeding || '',
+    totalCalories, totalProtein,
+    solaproPct: 50,
+    solaproScoops, solaproKcal: Math.round(solaproKcalR),
+    solaproProtein: solaproProtein.toFixed(1), solaproSugar: solaproSugar.toFixed(1),
+    foodCalories: Math.round(totalCalories - solaproKcalR),
+    foodProtein: Math.max(0, totalProtein - solaproProtein).toFixed(1),
+    actualFoodIntake: null,
+    isStunted: currentChild._isStunted || false,
+    stuntSeverity: currentChild._stuntSeverity || null,
+  };
+}
+
+function renderChatThread() {
+  const thread = document.getElementById('chat-thread');
+  thread.innerHTML = chatHistory.map(m => `
+    <div class="bubble ${m.role === 'user' ? 'user' : 'ai'}">${escapeHtml(m.content)}</div>
+  `).join('');
+  thread.scrollTop = thread.scrollHeight;
+  document.getElementById('chat-empty').style.display = chatHistory.length ? 'none' : 'block';
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : str;
+  return d.innerHTML;
+}
+
+async function startParentChat() {
+  if (!latestFollowup) { showToastFallback('لسه مفيش بيانات زيارة كافية لطفلك'); return; }
+  const btn = document.getElementById('startChatBtn');
+  btn.disabled = true; btn.textContent = '⏳ جارٍ إنشاء الخطة...';
+
+  try {
+    const res = await fetch('/api/solapro-plan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildParentAIContext())
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    chatHistory = [{ role: 'assistant', content: data.plan }];
+    renderChatThread();
+    document.getElementById('chatInputRow').style.display = 'flex';
+    btn.style.display = 'none';
+  } catch (e) {
+    chatHistory.push({ role: 'assistant', content: '❌ تعذّر إنشاء الخطة: ' + e.message });
+    renderChatThread();
+  }
+  btn.disabled = false; btn.textContent = '🔄 إعادة إنشاء الخطة';
+}
+
+async function sendParentChatMessage() {
+  const input = document.getElementById('chat-input');
+  const sendBtn = document.getElementById('chat-send-btn');
+  const text = input.value.trim();
+  if (!text) return;
+
+  chatHistory.push({ role: 'user', content: text });
+  renderChatThread();
+  input.value = ''; input.disabled = true; sendBtn.disabled = true; sendBtn.textContent = '...';
+
+  try {
+    const res = await fetch('/api/solapro-chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: buildParentAIContext(), history: chatHistory.slice(0, -1), message: text })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    chatHistory.push({ role: 'assistant', content: data.reply });
+  } catch (e) {
+    chatHistory.push({ role: 'assistant', content: '❌ حصل خطأ: ' + e.message });
+  }
+  renderChatThread();
+  input.disabled = false; sendBtn.disabled = false; sendBtn.textContent = 'إرسال'; input.focus();
+}
+
+function showToastFallback(msg) { showError(msg); setTimeout(hideError, 3000); }
+
+// Auto-login لو فيه جلسة محفوظة
+window.addEventListener('fb-ready', () => {
+  const saved = sessionStorage.getItem('nutriped_parent_session');
+  if (saved) {
+    try {
+      const { code, pass } = JSON.parse(saved);
+      document.getElementById('inp-code').value = code;
+      document.getElementById('inp-pass').value = pass;
+      doParentLogin();
+    } catch (e) { sessionStorage.removeItem('nutriped_parent_session'); }
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>

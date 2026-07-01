@@ -265,9 +265,9 @@ body {
 .card-body  { padding:14px; }
 
 /* Grid */
-.g2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
-.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.g2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; }
+.g3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+.g4 { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
 
 /* Metric card */
 .mc {
@@ -285,7 +285,7 @@ body {
 .bar-red   { background:var(--red); }
 
 /* Form fields */
-.fg { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; }
+.fg { display:flex; flex-direction:column; gap:4px; margin-bottom:12px; min-width:0; }
 .fg:last-child { margin-bottom:0; }
 label { font-size:12px; font-weight:500; color:var(--txt-2); }
 
@@ -320,8 +320,8 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
 }
 .inp-unit:focus-within { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow); }
 
-.fr { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.fr3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.fr { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:10px; }
+.fr3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
 
 /* Pill & badge */
 .pill {
@@ -539,8 +539,8 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
 
   /* Collapse grids */
   .g2, .g3, .g4 { grid-template-columns:1fr; }
-  .fr  { grid-template-columns:1fr 1fr; }
-  .fr3 { grid-template-columns:1fr 1fr; }
+  .fr  { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .fr3 { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
 
   /* Topbar */
   .topbar { padding:0 12px; }
@@ -947,6 +947,31 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
             </div>
           </div>
 
+          <!-- Parent Access -->
+          <div class="card">
+            <div class="card-header"><span class="card-icon">🔑</span><span class="card-title">دخول ولي الأمر</span></div>
+            <div class="card-body">
+              <div style="font-size:12px;color:var(--txt-2);margin-bottom:10px;line-height:1.7;">
+                اديله الكود وكلمة المرور دول عشان يتابع بيانات طفله وخطة التغذية بنفسه من نفس الموقع/التطبيق (صفحة parent.html)
+              </div>
+              <div id="parent-access-display" style="display:none;">
+                <div class="fr">
+                  <div class="mc" style="text-align:center;">
+                    <div class="mc-label">الكود</div>
+                    <div class="mc-value" id="pa-code" style="font-family:var(--mono);font-size:20px;letter-spacing:2px;color:var(--blue);">—</div>
+                  </div>
+                  <div class="mc" style="text-align:center;">
+                    <div class="mc-label">كلمة المرور</div>
+                    <div class="mc-value" id="pa-password" style="font-family:var(--mono);font-size:20px;letter-spacing:2px;color:var(--blue);">—</div>
+                  </div>
+                </div>
+                <button class="btn btn-ghost" style="width:100%;margin-top:10px;" onclick="copyParentAccess()">📋 نسخ الكود وكلمة المرور</button>
+                <button class="btn btn-ghost" style="width:100%;margin-top:6px;" onclick="shareParentAccessWhatsApp()">📤 إرسال عبر واتساب</button>
+              </div>
+              <button class="btn btn-primary" id="pa-generate-btn" style="width:100%;margin-top:8px;" onclick="generateParentAccess()">🔑 توليد كود دخول جديد</button>
+            </div>
+          </div>
+
           <!-- Measurements -->
           <div class="card">
             <div class="card-header"><span class="card-icon">📏</span><span class="card-title">القياسات الأنثروبومترية</span></div>
@@ -1140,14 +1165,14 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
               المساحة اللي منها الأم تقدر تشوف خطة تغذية طفلها وتناقشها مع الذكاء الاصطناعي. الأولوية دايمًا لعلاج <b>التقزم</b> (قصر القامة) لو موجود — لأن الوزن بيتظبط تلقائيًا لما مشكلة النمو الطولي تتحل؛ مشكلة الوزن بتظهر هنا لكن كأولوية تانية.
             </div>
             <div class="fr" style="align-items:flex-end;">
-              <div class="fg" style="max-width:220px;">
+              <div class="fg">
                 <label>نسبة سولابرو الافتراضية</label>
                 <div class="inp-unit">
                   <input type="number" id="sp-pct" value="50" min="0" max="100" step="5" oninput="updateSolaproMix()">
                   <span class="ul">%</span>
                 </div>
               </div>
-              <div class="fg" style="max-width:260px;">
+              <div class="fg">
                 <label>الطعام الذي يتناوله الطفل فعليًا (إن وُجد)</label>
                 <div class="inp-unit">
                   <input type="number" id="sp-actual-food" min="0" step="50" placeholder="اختياري" oninput="updateSolaproMix()">
@@ -1157,7 +1182,7 @@ input[readonly] { background:var(--bg-hover); color:var(--txt-acc); cursor:defau
             </div>
             <div style="font-size:11.5px;color:var(--txt-3);padding-top:4px;">لو الطفل بياكل كمية فعلية من الطعام، هنحسب سولابرو على الفرق الناقص فقط لو كان أقل من النسبة الافتراضية (مش هنزوّد سولابرو زيادة عن احتياجه)</div>
 
-            <div id="sp-mix-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:10px;">
+            <div id="sp-mix-grid" class="g2" style="margin-top:10px;">
               <div style="color:var(--txt-2);text-align:center;padding:20px;grid-column:1/-1;">أدخل بيانات الزيارة أولاً</div>
             </div>
 
@@ -1684,8 +1709,74 @@ async function loadChild(childId, childData) {
 
   renderLabTable();
   renderFollowupTable();
+  renderParentAccess();
   showPage('patient', null);
   showToast(`✅ تم فتح ملف: ${childData.name}`);
+}
+
+// ══════════════════════════════════════════════════════════════
+// PARENT ACCESS (كود دخول ولي الأمر)
+// ══════════════════════════════════════════════════════════════
+function randomDigits(len) {
+  const digits = '0123456789';
+  let s = '';
+  for (let i = 0; i < len; i++) s += digits[Math.floor(Math.random() * digits.length)];
+  return s;
+}
+
+function renderParentAccess() {
+  const disp = document.getElementById('parent-access-display');
+  const btn  = document.getElementById('pa-generate-btn');
+  const code = state.childData?.parentCode;
+  const pass = state.childData?.parentPassword;
+  if (code && pass) {
+    document.getElementById('pa-code').textContent = code;
+    document.getElementById('pa-password').textContent = pass;
+    disp.style.display = 'block';
+    btn.textContent = '🔄 توليد كود جديد (سيلغي القديم)';
+  } else {
+    disp.style.display = 'none';
+    btn.textContent = '🔑 توليد كود دخول جديد';
+  }
+}
+
+async function generateParentAccess() {
+  if (!state.childId) { showToast('⚠️ افتح ملف طفل أولاً'); return; }
+  const btn = document.getElementById('pa-generate-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const code = randomDigits(6);
+  const password = randomDigits(4);
+
+  try {
+    const { doc, setDoc } = window._fb;
+    await setDoc(doc(window._db, 'children', state.childId), { parentCode: code, parentPassword: password }, { merge: true });
+    state.childData.parentCode = code;
+    state.childData.parentPassword = password;
+    renderParentAccess();
+    showToast('✅ تم توليد كود جديد لولي الأمر');
+  } catch (e) {
+    showToast('❌ خطأ: ' + e.message);
+  }
+  btn.disabled = false;
+  renderParentAccess();
+}
+
+function copyParentAccess() {
+  const code = document.getElementById('pa-code').textContent;
+  const pass = document.getElementById('pa-password').textContent;
+  const text = `كود الدخول: ${code}\nكلمة المرور: ${pass}\nرابط المتابعة: ${window.location.origin}/parent.html`;
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('✅ تم النسخ'))
+    .catch(() => showToast('⚠️ تعذر النسخ — انسخ يدويًا'));
+}
+
+function shareParentAccessWhatsApp() {
+  const code = document.getElementById('pa-code').textContent;
+  const pass = document.getElementById('pa-password').textContent;
+  const text = encodeURIComponent(`كود الدخول لمتابعة بيانات طفلك على NutriPed:\nالكود: ${code}\nكلمة المرور: ${pass}\nرابط المتابعة: ${window.location.origin}/parent.html`);
+  window.open(`https://wa.me/?text=${text}`, '_blank');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -2016,7 +2107,7 @@ function updateNutritionPage() {
     </div>`;
 
   document.getElementById('macro-details').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;">
       <div class="mc" style="text-align:center;"><div class="mc-label">🥩 بروتين</div>
         <div class="mc-value" style="color:var(--blue);font-size:20px;">${fmt(protein)}</div>
         <div class="mc-unit">جرام/يوم</div></div>
@@ -2451,7 +2542,7 @@ function openFollowupDetail(index) {
     (r.labResults && Object.keys(r.labResults).length ? `
     <div style="grid-column:1/-1;background:var(--card);border-radius:8px;padding:10px 12px;">
       <div style="font-size:11px;color:var(--txt-3);margin-bottom:8px;">🧪 التحاليل المخبرية</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;">
         ${Object.entries(r.labResults).map(([k,v]) => `
           <div style="display:flex;justify-content:space-between;padding:4px 8px;background:var(--bg);border-radius:6px;font-size:12px;">
             <span style="color:var(--txt-2);">${k}</span>
@@ -2694,7 +2785,7 @@ renderLabTable();
       <span class="modal-title" id="fd-title">تفاصيل الزيارة</span>
       <button class="modal-close" onclick="closeModal('followupDetailModal')">✕</button>
     </div>
-    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" id="fd-body">
+    <div class="modal-body" style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;" id="fd-body">
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('followupDetailModal')">إغلاق</button>
